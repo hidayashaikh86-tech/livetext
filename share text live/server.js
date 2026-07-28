@@ -4,7 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 
 const PORT = Number(process.env.PORT || 3000);
-const HOST = process.env.HOST || "127.0.0.1";
+const HOST = "0.0.0.0";
 const PUBLIC_DIR = path.join(__dirname, "public");
 const MAX_TEXT_LENGTH = 800;
 const DEFAULT_EXPIRES_IN_MS = 2 * 60 * 1000;
@@ -427,5 +427,5 @@ setInterval(() => {
 }, 1000);
 
 server.listen(PORT, HOST, () => {
-  console.log(`Share Text Live is running at http://${HOST}:${PORT}`);
+  console.log(`Share Text Live is running on port ${PORT}`);
 });
