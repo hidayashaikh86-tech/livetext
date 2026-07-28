@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Share Text Live is a real-time shared text room where people can connect instantly, type live, copy messages, and collaborate from any device." />
+    <meta name="keywords" content="live text sharing, real time chat, shared text room, collaborative text, disappearing messages, group notes" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#0b7a75" />
+    <link rel="canonical" href="/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Share Text Live - Real-Time Shared Text Room" />
+    <meta property="og:description" content="Connect automatically, share live text, copy messages, and create private room links for focused collaboration." />
+    <meta property="og:url" content="/" />
+    <meta property="og:site_name" content="Share Text Live" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Share Text Live - Real-Time Shared Text Room" />
+    <meta name="twitter:description" content="A simple live room for shared text, live typing previews, disappearing messages, and private invite links." />
+    <title>Share Text Live - Real-Time Shared Text Room</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Share Text Live",
+        "applicationCategory": "CommunicationApplication",
+        "operatingSystem": "Any",
+        "description": "A real-time shared text room for live typing, message copying, disappearing messages, and private invite links.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" aria-label="Live shared text workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Share Text Live</p>
+            <h1>Live shared text room</h1>
+          </div>
+          <div class="connection-card" aria-live="polite">
+            <span id="status-dot" class="status-dot"></span>
+            <span id="connection-label">Connecting...</span>
+          </div>
+        </header>
+
+        <section id="launch-notice" class="launch-notice" hidden>
+          <strong>Open this app through the local server.</strong>
+          <span>Run <code>npm start</code>, then open <code>http://127.0.0.1:3000</code>. Direct file opening cannot connect people live.</span>
+        </section>
+
+        <section class="composer-panel">
+          <label class="field-label" for="name-input">Your display name</label>
+          <div class="name-row">
+            <input id="name-input" type="text" maxlength="28" autocomplete="name" />
+            <button id="save-name" type="button">Save</button>
+          </div>
+
+          <form id="message-form" class="message-form">
+            <label class="field-label" for="message-input">Write text for everyone</label>
+            <textarea id="message-input" rows="4" maxlength="800" placeholder="Type something everyone connected can see..."></textarea>
+            <div class="message-options">
+              <label class="field-label" for="expiry-select">Disappear after</label>
+              <select id="expiry-select">
+                <option value="10000">10 seconds</option>
+                <option value="30000">30 seconds</option>
+                <option value="120000" selected>2 minutes</option>
+                <option value="600000">10 minutes</option>
+                <option value="0">Keep until deleted</option>
+              </select>
+            </div>
+            <div class="form-footer">
+              <span id="char-count">0 / 800</span>
+              <button type="submit">Share live</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="board-panel" aria-label="Shared messages">
+          <div class="board-header">
+            <div>
+              <p class="eyebrow">Shared page</p>
+              <h2>Everyone can edit or delete</h2>
+            </div>
+            <div class="board-tools">
+              <span id="message-count">0 notes</span>
+              <button id="copy-all" type="button" data-default-label="Copy all">Copy all</button>
+            </div>
+          </div>
+          <div id="typing-previews" class="typing-previews" aria-live="polite"></div>
+          <div id="messages" class="messages" aria-live="polite"></div>
+        </section>
+      </section>
+
+      <aside class="people-panel" aria-label="Connected people">
+        <div class="people-header">
+          <p class="eyebrow">Connected now</p>
+          <strong id="people-count">0 people</strong>
+        </div>
+        <div class="invite-box">
+          <label class="field-label" for="room-link">Room link</label>
+          <div class="invite-row">
+            <input id="room-link" type="text" readonly />
+            <button id="copy-link" type="button" data-default-label="Copy">Copy</button>
+          </div>
+          <div class="room-actions">
+            <button id="new-room" class="secondary-action" type="button" data-default-label="New private room">New private room</button>
+            <button id="default-room" class="secondary-action" type="button">Default public room</button>
+          </div>
+          <p id="room-label" class="room-label"></p>
+        </div>
+        <div id="people-list" class="people-list"></div>
+        <div id="live-preview" class="live-preview" hidden>
+          <p class="eyebrow">Your live draft</p>
+          <p></p>
+        </div>
+      </aside>
+    </main>
+
+    <template id="message-template">
+      <article class="message-card">
+        <div class="message-meta">
+          <span class="avatar"></span>
+          <div>
+            <strong class="author"></strong>
+            <time class="timestamp"></time>
+          </div>
+        </div>
+        <p class="message-text"></p>
+        <div class="expiry-row">
+          <span class="expires-label"></span>
+          <span class="expiry-bar"><span></span></span>
+        </div>
+        <form class="edit-form" hidden>
+          <textarea rows="3" maxlength="800"></textarea>
+          <div class="edit-actions">
+            <button class="cancel-edit" type="button">Cancel</button>
+            <button type="submit">Save edit</button>
+          </div>
+        </form>
+        <div class="message-actions">
+          <button class="copy-message" type="button" data-default-label="Copy">Copy</button>
+          <button class="edit-message" type="button">Edit</button>
+          <button class="delete-message danger" type="button">Delete</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
