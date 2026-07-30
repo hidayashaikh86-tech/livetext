@@ -288,6 +288,14 @@ function handleClientAction(client, action) {
 
     room.messages.splice(index, 1);
     broadcastMessages(room);
+    return;
+  }
+
+  if (action.type === "clear") {
+    if (room.messages.length === 0) return;
+
+    room.messages.length = 0;
+    broadcastMessages(room);
   }
 }
 

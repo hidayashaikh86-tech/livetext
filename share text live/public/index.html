@@ -38,13 +38,19 @@
     <main class="app-shell">
       <section class="workspace" aria-label="Live shared text workspace">
         <header class="topbar">
-          <div>
-            <p class="eyebrow">Share Text Live</p>
-            <h1>Live shared text room</h1>
+          <div class="brand-lockup">
+            <span class="brand-mark" aria-hidden="true"><span></span></span>
+            <div>
+              <p class="eyebrow">Share Text Live</p>
+              <h1>Live shared text room</h1>
+            </div>
           </div>
-          <div class="connection-card" aria-live="polite">
-            <span id="status-dot" class="status-dot"></span>
-            <span id="connection-label">Connecting...</span>
+          <div class="header-status">
+            <span id="room-chip" class="room-chip">Public room</span>
+            <div class="connection-card" aria-live="polite">
+              <span id="status-dot" class="status-dot"></span>
+              <span id="connection-label">Connecting...</span>
+            </div>
           </div>
         </header>
 
@@ -53,7 +59,15 @@
           <span>Run <code>npm start</code>, then open <code>http://127.0.0.1:3000</code>. Direct file opening cannot connect people live.</span>
         </section>
 
-        <section class="composer-panel">
+        <section class="composer-panel" aria-label="Message composer">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Live composer</p>
+              <h2>Write together</h2>
+            </div>
+            <span id="draft-status" class="draft-status" aria-live="polite">Draft ready</span>
+          </div>
+
           <label class="field-label" for="name-input">Your display name</label>
           <div class="name-row">
             <input id="name-input" type="text" maxlength="28" autocomplete="name" />
@@ -63,19 +77,21 @@
           <form id="message-form" class="message-form">
             <label class="field-label" for="message-input">Write text for everyone</label>
             <textarea id="message-input" rows="4" maxlength="800" placeholder="Type something everyone connected can see..."></textarea>
-            <div class="message-options">
-              <label class="field-label" for="expiry-select">Disappear after</label>
-              <select id="expiry-select">
-                <option value="10000">10 seconds</option>
-                <option value="30000">30 seconds</option>
-                <option value="120000" selected>2 minutes</option>
-                <option value="600000">10 minutes</option>
-                <option value="0">Keep until deleted</option>
-              </select>
-            </div>
-            <div class="form-footer">
-              <span id="char-count">0 / 800</span>
-              <button type="submit">Share live</button>
+            <div class="compose-footer">
+              <div class="message-options">
+                <label class="field-label" for="expiry-select">Message lifetime</label>
+                <select id="expiry-select">
+                  <option value="10000">10 seconds</option>
+                  <option value="30000">30 seconds</option>
+                  <option value="120000" selected>2 minutes</option>
+                  <option value="600000">10 minutes</option>
+                  <option value="0">Keep until deleted</option>
+                </select>
+              </div>
+              <div class="form-footer">
+                <span id="char-count">0 / 800</span>
+                <button id="share-button" type="submit">Share live</button>
+              </div>
             </div>
           </form>
         </section>
@@ -83,12 +99,13 @@
         <section class="board-panel" aria-label="Shared messages">
           <div class="board-header">
             <div>
-              <p class="eyebrow">Shared page</p>
-              <h2>Everyone can edit or delete</h2>
+              <p class="eyebrow">Shared stream</p>
+              <h2>Messages from everyone in this room</h2>
             </div>
             <div class="board-tools">
               <span id="message-count">0 notes</span>
               <button id="copy-all" type="button" data-default-label="Copy all">Copy all</button>
+              <button id="clear-room" class="danger-button" type="button">Clear room</button>
             </div>
           </div>
           <div id="typing-previews" class="typing-previews" aria-live="polite"></div>
@@ -96,9 +113,9 @@
         </section>
       </section>
 
-      <aside class="people-panel" aria-label="Connected people">
+      <aside class="people-panel" aria-label="Room information">
         <div class="people-header">
-          <p class="eyebrow">Connected now</p>
+          <p class="eyebrow">Room access</p>
           <strong id="people-count">0 people</strong>
         </div>
         <div class="invite-box">
@@ -113,6 +130,10 @@
           </div>
           <p id="room-label" class="room-label"></p>
         </div>
+        <div class="sidebar-divider"></div>
+        <div class="people-header people-header-secondary">
+          <p class="eyebrow">Connected now</p>
+        </div>
         <div id="people-list" class="people-list"></div>
         <div id="live-preview" class="live-preview" hidden>
           <p class="eyebrow">Your live draft</p>
@@ -120,6 +141,8 @@
         </div>
       </aside>
     </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
     <template id="message-template">
       <article class="message-card">
