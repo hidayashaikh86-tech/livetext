@@ -93,6 +93,17 @@ if (window.visualViewport) {
 }
 
 async function setupCryptoKey() {
+  if (currentRoomId === "public") {
+    // Shared constant key for the public room so everyone can read each other's messages
+    const publicBase64Key = "U2hhcmVUZXh0TGl2ZVB1YmxpY1Jvb21LZXkxMjM0NTY="; // btoa("ShareTextLivePublicRoomKey123456")
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    const rawKey = new Uint8Array(atob(publicBase64Key).split('').map(c => c.charCodeAt(0)));
+    roomCryptoKey = await window.crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+    return;
+  }
+
   const hash = window.location.hash.slice(1);
   const hashParams = new URLSearchParams(hash);
   let keyBase64 = hashParams.get('key');
@@ -272,15 +283,16 @@ function getRoomUrl(roomId = currentRoomId) {
   const url = new URL(location.href);
   if (roomId === "public") {
     url.searchParams.delete("room");
+    url.hash = "";
   } else {
     url.searchParams.set("room", roomId);
+    if (roomId === currentRoomId) {
+      url.hash = window.location.hash;
+    } else {
+      url.hash = "";
+    }
   }
 
-  if (roomId === currentRoomId) {
-    url.hash = window.location.hash;
-  } else {
-    url.hash = "";
-  }
   return url.toString();
 }
 
