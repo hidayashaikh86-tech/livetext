@@ -71,7 +71,8 @@ function getRoom(roomId) {
     rooms.set(id, {
       id,
       messages: [],
-      typingDrafts: new Map()
+      typingDrafts: new Map(),
+      pinnedMessageId: null
     });
   }
 
@@ -110,10 +111,16 @@ function activeMessages(room) {
 
 function broadcastMessages(room) {
   removeExpiredMessages(room);
+  // Ensure pinned message still exists
+  if (room.pinnedMessageId && !room.messages.find(m => m.id === room.pinnedMessageId)) {
+    room.pinnedMessageId = null;
+  }
+  
   broadcastToRoom(room.id, {
     type: "messages",
     roomId: room.id,
     messages: activeMessages(room),
+    pinnedMessageId: room.pinnedMessageId,
     serverTime: Date.now()
   });
 }
@@ -236,6 +243,7 @@ function handleClientAction(client, action) {
       authorId: client.id,
       authorName: client.name,
       authorColor: client.color,
+      replyTo: action.replyTo ? String(action.replyTo).slice(0, 36) : null,
       createdAt,
       updatedAt: createdAt,
       expiresAt: expiresInMs === 0 ? null : createdAt + expiresInMs
@@ -287,6 +295,23 @@ function handleClientAction(client, action) {
     if (index === -1) return;
 
     room.messages.splice(index, 1);
+    if (room.pinnedMessageId === action.id) {
+      room.pinnedMessageId = null;
+    }
+    broadcastMessages(room);
+    return;
+  }
+
+  if (action.type === "pin") {
+    if (room.messages.some(m => m.id === action.id)) {
+      room.pinnedMessageId = action.id;
+      broadcastMessages(room);
+    }
+    return;
+  }
+
+  if (action.type === "unpin") {
+    room.pinnedMessageId = null;
     broadcastMessages(room);
     return;
   }
@@ -390,6 +415,7 @@ server.on("upgrade", (req, socket) => {
     name: client.name,
     messages: activeMessages(room),
     drafts: activeTypingDrafts(room),
+    pinnedMessageId: room.pinnedMessageId,
     serverTime: Date.now()
   });
   broadcastPresence(room.id);

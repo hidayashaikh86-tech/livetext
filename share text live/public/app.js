@@ -36,6 +36,18 @@ const boardMenuBtn = document.getElementById("board-menu-btn");
 const boardMenu = document.getElementById("board-menu");
 const boardScrollArea = document.getElementById("board-scroll-area");
 const mobileRoomName = document.getElementById("mobile-room-name");
+const exportRoomButton = document.getElementById("export-room");
+
+// Reply and Pin Elements
+const replyBanner = document.getElementById("reply-banner");
+const replyAuthor = document.getElementById("reply-author");
+const replySnippet = document.getElementById("reply-snippet");
+const cancelReplyBtn = document.getElementById("cancel-reply");
+
+const pinnedBanner = document.getElementById("pinned-banner");
+const pinnedAuthor = document.getElementById("pinned-author");
+const pinnedSnippet = document.getElementById("pinned-snippet");
+const closePinnedBtn = document.getElementById("close-pinned");
 
 let socket;
 let clientId = "";
@@ -50,6 +62,8 @@ let isConnected = false;
 let draftSaveTimer;
 let toastTimer;
 let roomSwitchInProgress = false;
+let replyingToMessage = null;
+let pinnedMessageId = null;
 
 // Helpers for scrolling
 function scrollToBottom() {
@@ -104,8 +118,10 @@ function connect() {
       restoreDraft();
       messages = payload.messages || [];
       typingDrafts = payload.drafts || [];
+      pinnedMessageId = payload.pinnedMessageId || null;
       serverOffset = (payload.serverTime || Date.now()) - Date.now();
       renderMessages();
+      renderPinnedMessage();
       renderTypingDrafts();
       scrollToBottom();
 
@@ -117,8 +133,10 @@ function connect() {
 
     if (payload.type === "messages") {
       messages = payload.messages || [];
+      pinnedMessageId = payload.pinnedMessageId || null;
       serverOffset = (payload.serverTime || Date.now()) - Date.now();
       renderMessages();
+      renderPinnedMessage();
       if (isAtBottom) scrollToBottom();
     }
 
@@ -214,9 +232,12 @@ function switchRoom(roomId, options = {}) {
   messages = [];
   typingDrafts = [];
   clientId = "";
+  pinnedMessageId = null;
+  setReplyingTo(null);
   messageInput.value = "";
   charCount.textContent = "0/50000";
   renderMessages();
+  renderPinnedMessage();
   renderTypingDrafts();
   renderPeople([], 0);
   updateOwnLivePreview();
@@ -406,17 +427,50 @@ function renderMessages() {
     const editButton = node.querySelector(".edit-message");
     const cancelButton = node.querySelector(".cancel-edit");
     const deleteButton = node.querySelector(".delete-message");
+    const replyButton = node.querySelector(".reply-message");
+    const pinButton = node.querySelector(".pin-message");
     const menuBtn = node.querySelector(".msg-menu-btn");
     const dropdown = node.querySelector(".msg-dropdown");
+    
+    const replyContext = node.querySelector(".message-reply-context");
+    const replyContextAuthor = node.querySelector(".reply-context-author");
+    const replyContextText = node.querySelector(".reply-context-text");
 
     avatar.style.background = message.authorColor || "#6366f1";
     node.dataset.createdAt = message.createdAt;
+    node.dataset.messageId = message.id;
     node.dataset.expiresAt = message.expiresAt || "";
     author.textContent = message.authorName || "Guest";
+    
+    if (message.replyTo) {
+      const parentMsg = messages.find(m => m.id === message.replyTo);
+      if (parentMsg) {
+        replyContext.classList.remove('hidden');
+        replyContextAuthor.textContent = parentMsg.authorName || "Guest";
+        replyContextText.textContent = (parentMsg.text || "").slice(0, 100).replace(/\n/g, ' ') + "...";
+        
+        replyContext.addEventListener('click', () => {
+          const targetCard = document.querySelector(`.message-card[data-message-id="${parentMsg.id}"]`);
+          if (targetCard) targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      }
+    }
+    
+    if (message.id === pinnedMessageId) {
+      pinButton.textContent = "Unpin";
+    }
+
     timestamp.textContent = message.updatedAt !== message.createdAt
       ? `Edited ${formatTime(message.updatedAt)}`
       : `${formatTime(message.createdAt)}`;
-    text.textContent = message.text;
+    
+    if (window.marked && window.DOMPurify) {
+      const rawHtml = marked.parse(message.text || "", { breaks: true, gfm: true });
+      text.innerHTML = DOMPurify.sanitize(rawHtml);
+    } else {
+      text.textContent = message.text;
+    }
+    
     editInput.value = message.text;
     expiresLabel.textContent = message.expiresAt ? "..." : "Keep";
 
@@ -459,6 +513,20 @@ function renderMessages() {
       send({ type: "delete", id: message.id });
       dropdown.classList.add('hidden');
     });
+    
+    replyButton.addEventListener("click", () => {
+      setReplyingTo(message);
+      dropdown.classList.add('hidden');
+    });
+
+    pinButton.addEventListener("click", () => {
+      if (message.id === pinnedMessageId) {
+        send({ type: "unpin" });
+      } else {
+        send({ type: "pin", id: message.id });
+      }
+      dropdown.classList.add('hidden');
+    });
 
     messagesEl.append(node);
   }
@@ -485,7 +553,11 @@ function renderTypingDrafts() {
     const text = document.createElement("p");
 
     heading.textContent = `${draft.authorName || "Guest"} is typing...`;
-    text.textContent = draft.text;
+    if (window.marked && window.DOMPurify) {
+      text.innerHTML = DOMPurify.sanitize(marked.parse(draft.text || "", { breaks: true, gfm: true }));
+    } else {
+      text.textContent = draft.text;
+    }
 
     body.append(heading, text);
     item.append(avatar, body);
@@ -496,7 +568,11 @@ function renderTypingDrafts() {
 function updateOwnLivePreview() {
   const text = messageInput.value.trim();
   livePreview.hidden = !text;
-  livePreviewText.textContent = text;
+  if (window.marked && window.DOMPurify) {
+    livePreviewText.innerHTML = DOMPurify.sanitize(marked.parse(text || "", { breaks: true, gfm: true }));
+  } else {
+    livePreviewText.textContent = text;
+  }
 }
 
 function sendTypingSoon() {
@@ -547,6 +623,50 @@ if (boardMenuBtn && boardMenu) {
   });
 }
 
+function setReplyingTo(message) {
+  replyingToMessage = message;
+  if (message) {
+    replyBanner.classList.remove('hidden');
+    replyAuthor.textContent = message.authorName || "Guest";
+    replySnippet.textContent = (message.text || "").replace(/\n/g, ' ').slice(0, 60) + "...";
+    messageInput.focus();
+  } else {
+    replyBanner.classList.add('hidden');
+  }
+}
+
+if (cancelReplyBtn) {
+  cancelReplyBtn.addEventListener('click', () => setReplyingTo(null));
+}
+
+function renderPinnedMessage() {
+  if (pinnedMessageId && pinnedBanner) {
+    const msg = messages.find(m => m.id === pinnedMessageId);
+    if (msg) {
+      pinnedBanner.classList.remove('hidden');
+      pinnedAuthor.textContent = msg.authorName || "Guest";
+      pinnedSnippet.textContent = (msg.text || "").replace(/\n/g, ' ').slice(0, 80) + "...";
+      
+      pinnedBanner.onclick = (e) => {
+        if (e.target.closest('#close-pinned')) return;
+        const targetCard = document.querySelector(`.message-card[data-message-id="${msg.id}"]`);
+        if (targetCard) targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+    } else {
+      pinnedBanner.classList.add('hidden');
+    }
+  } else if (pinnedBanner) {
+    pinnedBanner.classList.add('hidden');
+  }
+}
+
+if (closePinnedBtn) {
+  closePinnedBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    send({ type: "unpin" });
+  });
+}
+
 // Global click to close dropdowns
 document.addEventListener('click', () => {
   if (boardMenu) boardMenu.classList.add('hidden');
@@ -577,6 +697,29 @@ if (copyAllButton) {
 
     copyText(text);
     if (boardMenu) boardMenu.classList.add('hidden');
+  });
+}
+
+if (exportRoomButton) {
+  exportRoomButton.addEventListener("click", () => {
+    const textContent = messages
+      .slice()
+      .sort((first, second) => first.createdAt - second.createdAt)
+      .map(msg => `[${formatTime(msg.createdAt)}] ${msg.authorName || "Guest"}:\n${msg.text}`)
+      .join("\n\n----------------------------------------\n\n");
+
+    const blob = new Blob([textContent], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `share-text-live-${currentRoomId}-${new Date().toISOString().slice(0,10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    if (boardMenu) boardMenu.classList.add('hidden');
+    showToast("Room exported to file.");
   });
 }
 
@@ -650,7 +793,12 @@ messageForm.addEventListener("submit", (event) => {
   const text = messageInput.value.trim();
   if (!text) return;
 
-  if (!send({ type: "create", text, expiresInMs: Number(expirySelect.value) })) {
+  const payload = { type: "create", text, expiresInMs: Number(expirySelect.value) };
+  if (replyingToMessage) {
+    payload.replyTo = replyingToMessage.id;
+  }
+
+  if (!send(payload)) {
     showToast("Waiting for the live connection before sharing.");
     return;
   }
@@ -658,6 +806,7 @@ messageForm.addEventListener("submit", (event) => {
   messageInput.value = "";
   messageInput.style.height = 'auto';
   charCount.textContent = "0/50000";
+  setReplyingTo(null);
   updateOwnLivePreview();
   saveDraft();
   updateSendState();
