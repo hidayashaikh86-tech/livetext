@@ -2,11 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Ensure proper scaling on mobile and prevent zoom on focus -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
     <meta name="description" content="Share Text Live is a real-time shared text room where people can connect instantly, type live, copy messages, and collaborate from any device." />
     <meta name="keywords" content="live text sharing, real time chat, shared text room, collaborative text, disappearing messages, group notes" />
     <meta name="robots" content="index, follow" />
-    <meta name="theme-color" content="#0b7a75" />
+    <meta name="theme-color" content="#0d0d12" />
     <link rel="canonical" href="/" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Share Text Live - Real-Time Shared Text Room" />
@@ -17,104 +18,31 @@
     <meta name="twitter:title" content="Share Text Live - Real-Time Shared Text Room" />
     <meta name="twitter:description" content="A simple live room for shared text, live typing previews, disappearing messages, and private invite links." />
     <title>Share Text Live - Real-Time Shared Text Room</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="styles.css" />
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Share Text Live",
-        "applicationCategory": "CommunicationApplication",
-        "operatingSystem": "Any",
-        "description": "A real-time shared text room for live typing, message copying, disappearing messages, and private invite links.",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD"
-        }
-      }
-    </script>
   </head>
   <body>
     <main class="app-shell">
-      <section class="workspace" aria-label="Live shared text workspace">
-        <header class="topbar">
+      <!-- Sidebar / People Panel -->
+      <aside class="people-panel" id="sidebar" aria-label="Room information">
+        <div class="sidebar-header">
           <div class="brand-lockup">
             <span class="brand-mark" aria-hidden="true"><span></span></span>
             <div>
               <p class="eyebrow">Share Text Live</p>
-              <h1>Live shared text room</h1>
             </div>
           </div>
-          <div class="header-status">
-            <span id="room-chip" class="room-chip">Public room</span>
-            <div class="connection-card" aria-live="polite">
-              <span id="status-dot" class="status-dot"></span>
-              <span id="connection-label">Connecting...</span>
-            </div>
-          </div>
-        </header>
+          <button id="close-sidebar" class="icon-button mobile-only" aria-label="Close sidebar">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
 
-        <section id="launch-notice" class="launch-notice" hidden>
-          <strong>Open this app through the local server.</strong>
-          <span>Run <code>npm start</code>, then open <code>http://127.0.0.1:3000</code>. Direct file opening cannot connect people live.</span>
-        </section>
-
-        <section class="composer-panel" aria-label="Message composer">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Live composer</p>
-              <h2>Write together</h2>
-            </div>
-            <span id="draft-status" class="draft-status" aria-live="polite">Draft ready</span>
-          </div>
-
-          <label class="field-label" for="name-input">Your display name</label>
-          <div class="name-row">
-            <input id="name-input" type="text" maxlength="28" autocomplete="name" />
-            <button id="save-name" type="button">Save</button>
-          </div>
-
-          <form id="message-form" class="message-form">
-            <label class="field-label" for="message-input">Write text for everyone</label>
-            <textarea id="message-input" rows="4" maxlength="800" placeholder="Type something everyone connected can see..."></textarea>
-            <div class="compose-footer">
-              <div class="message-options">
-                <label class="field-label" for="expiry-select">Message lifetime</label>
-                <select id="expiry-select">
-                  <option value="10000">10 seconds</option>
-                  <option value="30000">30 seconds</option>
-                  <option value="120000" selected>2 minutes</option>
-                  <option value="600000">10 minutes</option>
-                  <option value="0">Keep until deleted</option>
-                </select>
-              </div>
-              <div class="form-footer">
-                <span id="char-count">0 / 800</span>
-                <button id="share-button" type="submit">Share live</button>
-              </div>
-            </div>
-          </form>
-        </section>
-
-        <section class="board-panel" aria-label="Shared messages">
-          <div class="board-header">
-            <div>
-              <p class="eyebrow">Shared stream</p>
-              <h2>Messages from everyone in this room</h2>
-            </div>
-            <div class="board-tools">
-              <span id="message-count">0 notes</span>
-              <button id="copy-all" type="button" data-default-label="Copy all">Copy all</button>
-              <button id="clear-room" class="danger-button" type="button">Clear room</button>
-            </div>
-          </div>
-          <div id="typing-previews" class="typing-previews" aria-live="polite"></div>
-          <div id="messages" class="messages" aria-live="polite"></div>
-        </section>
-      </section>
-
-      <aside class="people-panel" aria-label="Room information">
-        <div class="people-header">
+        <div class="people-header mt-1">
           <p class="eyebrow">Room access</p>
           <strong id="people-count">0 people</strong>
         </div>
@@ -122,25 +50,116 @@
           <label class="field-label" for="room-link">Room link</label>
           <div class="invite-row">
             <input id="room-link" type="text" readonly />
-            <button id="copy-link" type="button" data-default-label="Copy">Copy</button>
+            <button id="copy-link" type="button" class="btn-primary" data-default-label="Copy">Copy</button>
           </div>
           <div class="room-actions">
-            <button id="new-room" class="secondary-action" type="button" data-default-label="New private room">New private room</button>
-            <button id="default-room" class="secondary-action" type="button">Default public room</button>
+            <button id="new-room" class="secondary-action" type="button" data-default-label="New private">New private</button>
+            <button id="default-room" class="secondary-action" type="button">Default public</button>
           </div>
           <p id="room-label" class="room-label"></p>
         </div>
+        <div class="sidebar-divider"></div>
+
+        <div class="people-settings">
+          <label class="field-label" for="name-input">Your display name</label>
+          <div class="name-row">
+            <input id="name-input" type="text" maxlength="28" autocomplete="name" />
+            <button id="save-name" type="button" class="btn-primary">Save</button>
+          </div>
+        </div>
+        
         <div class="sidebar-divider"></div>
         <div class="people-header people-header-secondary">
           <p class="eyebrow">Connected now</p>
         </div>
         <div id="people-list" class="people-list"></div>
-        <div id="live-preview" class="live-preview" hidden>
-          <p class="eyebrow">Your live draft</p>
-          <p></p>
-        </div>
       </aside>
+
+      <!-- Main Workspace -->
+      <section class="workspace" aria-label="Live shared text workspace">
+        
+        <!-- Header -->
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="toggle-sidebar" class="icon-button mobile-only" aria-label="Open sidebar">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+            </button>
+            <div class="room-info">
+              <h1 id="mobile-room-name">Live Room</h1>
+              <span id="room-chip" class="room-chip">Public</span>
+            </div>
+          </div>
+          <div class="header-status">
+            <div class="connection-card" aria-live="polite">
+              <span id="status-dot" class="status-dot"></span>
+              <span id="connection-label" class="desktop-only">Connecting...</span>
+            </div>
+            <div class="board-tools-dropdown">
+               <button id="board-menu-btn" class="icon-button" aria-label="Room Options">
+                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+               </button>
+               <div id="board-menu" class="dropdown-menu hidden">
+                 <button id="copy-all" type="button" data-default-label="Copy all messages">Copy all messages</button>
+                 <button id="clear-room" class="danger-button" type="button">Clear room</button>
+               </div>
+            </div>
+          </div>
+        </header>
+
+        <section id="launch-notice" class="launch-notice" hidden>
+          <strong>Open this app through the local server.</strong>
+          <span>Run <code>npm start</code>, then open <code>http://127.0.0.1:3000</code>.</span>
+        </section>
+
+        <!-- Messages Area (Scrollable) -->
+        <section class="board-panel" id="board-panel" aria-label="Shared messages">
+          <div class="board-scroll-area" id="board-scroll-area">
+             <div class="board-content">
+               <div id="messages" class="messages" aria-live="polite"></div>
+               <div id="typing-previews" class="typing-previews" aria-live="polite"></div>
+             </div>
+          </div>
+        </section>
+
+        <!-- Composer Area (Fixed Bottom) -->
+        <section class="composer-panel" aria-label="Message composer">
+          <div class="composer-header">
+             <span id="draft-status" class="draft-status" aria-live="polite">Draft ready</span>
+          </div>
+          <div id="live-preview" class="live-preview" hidden>
+            <p class="eyebrow">Your live draft</p>
+            <p></p>
+          </div>
+          <form id="message-form" class="message-form">
+            <textarea id="message-input" rows="1" maxlength="50000" placeholder="Type a message..."></textarea>
+            
+            <div class="compose-footer">
+              <div class="message-options">
+                <select id="expiry-select" aria-label="Message lifetime" class="minimal-select">
+                  <option value="10000">10s</option>
+                  <option value="30000">30s</option>
+                  <option value="120000" selected>2m</option>
+                  <option value="600000">10m</option>
+                  <option value="0">Keep</option>
+                </select>
+              </div>
+              <div class="form-actions">
+                <span id="char-count" class="char-count-pill">0/50000</span>
+                <button id="share-button" type="submit" class="btn-primary" aria-label="Send message">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 2L11 13"></path>
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </form>
+        </section>
+      </section>
     </main>
+
+    <!-- Overlay for mobile sidebar -->
+    <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
@@ -148,9 +167,19 @@
       <article class="message-card">
         <div class="message-meta">
           <span class="avatar"></span>
-          <div>
+          <div class="meta-text">
             <strong class="author"></strong>
             <time class="timestamp"></time>
+          </div>
+          <div class="message-options-menu">
+            <button class="msg-menu-btn icon-button" aria-label="Message options">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            </button>
+            <div class="msg-dropdown hidden">
+              <button class="copy-message" type="button" data-default-label="Copy text">Copy text</button>
+              <button class="edit-message" type="button">Edit</button>
+              <button class="delete-message danger" type="button">Delete</button>
+            </div>
           </div>
         </div>
         <p class="message-text"></p>
@@ -159,17 +188,12 @@
           <span class="expiry-bar"><span></span></span>
         </div>
         <form class="edit-form" hidden>
-          <textarea rows="3" maxlength="800"></textarea>
+          <textarea rows="3" maxlength="50000"></textarea>
           <div class="edit-actions">
-            <button class="cancel-edit" type="button">Cancel</button>
-            <button type="submit">Save edit</button>
+            <button class="cancel-edit secondary-action" type="button">Cancel</button>
+            <button type="submit" class="btn-primary">Save edit</button>
           </div>
         </form>
-        <div class="message-actions">
-          <button class="copy-message" type="button" data-default-label="Copy">Copy</button>
-          <button class="edit-message" type="button">Edit</button>
-          <button class="delete-message danger" type="button">Delete</button>
-        </div>
       </article>
     </template>
 

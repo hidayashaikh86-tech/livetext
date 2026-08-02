@@ -27,6 +27,16 @@ const draftStatus = document.querySelector("#draft-status");
 const toast = document.querySelector("#toast");
 const template = document.querySelector("#message-template");
 
+// New elements for UI overhaul
+const sidebar = document.getElementById("sidebar");
+const toggleSidebarBtn = document.getElementById("toggle-sidebar");
+const closeSidebarBtn = document.getElementById("close-sidebar");
+const sidebarOverlay = document.getElementById("sidebar-overlay");
+const boardMenuBtn = document.getElementById("board-menu-btn");
+const boardMenu = document.getElementById("board-menu");
+const boardScrollArea = document.getElementById("board-scroll-area");
+const mobileRoomName = document.getElementById("mobile-room-name");
+
 let socket;
 let clientId = "";
 let messages = [];
@@ -40,6 +50,24 @@ let isConnected = false;
 let draftSaveTimer;
 let toastTimer;
 let roomSwitchInProgress = false;
+
+// Helpers for scrolling
+function scrollToBottom() {
+  if (boardScrollArea) {
+    boardScrollArea.scrollTo({
+      top: boardScrollArea.scrollHeight,
+      behavior: 'smooth'
+    });
+  }
+}
+
+// Adjust scroll when virtual keyboard opens (Viewport resize)
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => {
+    // Small delay to allow layout to settle
+    setTimeout(scrollToBottom, 100);
+  });
+}
 
 function connect() {
   updateRoomUi();
@@ -65,6 +93,7 @@ function connect() {
 
   socket.addEventListener("message", (event) => {
     const payload = JSON.parse(event.data);
+    const isAtBottom = boardScrollArea ? (boardScrollArea.scrollHeight - boardScrollArea.scrollTop - boardScrollArea.clientHeight < 100) : false;
 
     if (payload.type === "hello") {
       clientId = payload.clientId;
@@ -78,6 +107,7 @@ function connect() {
       serverOffset = (payload.serverTime || Date.now()) - Date.now();
       renderMessages();
       renderTypingDrafts();
+      scrollToBottom();
 
       if (roomSwitchInProgress) {
         roomSwitchInProgress = false;
@@ -89,6 +119,7 @@ function connect() {
       messages = payload.messages || [];
       serverOffset = (payload.serverTime || Date.now()) - Date.now();
       renderMessages();
+      if (isAtBottom) scrollToBottom();
     }
 
     if (payload.type === "presence") {
@@ -98,6 +129,7 @@ function connect() {
     if (payload.type === "typing") {
       typingDrafts = payload.drafts || [];
       renderTypingDrafts();
+      if (isAtBottom) scrollToBottom();
     }
   });
 
@@ -148,7 +180,8 @@ function updateRoomUi() {
   roomLabel.textContent = currentRoomId === "public"
     ? "Public room: everyone joins this room automatically."
     : `Private room: ${currentRoomId}`;
-  roomChip.textContent = currentRoomId === "public" ? "Public room" : "Private room";
+  roomChip.textContent = currentRoomId === "public" ? "Public" : "Private";
+  if (mobileRoomName) mobileRoomName.textContent = currentRoomId === "public" ? "Public Room" : "Private Room";
   defaultRoomButton.disabled = currentRoomId === "public";
 
   const canonical = document.querySelector("link[rel='canonical']");
@@ -182,7 +215,7 @@ function switchRoom(roomId, options = {}) {
   typingDrafts = [];
   clientId = "";
   messageInput.value = "";
-  charCount.textContent = "0 / 800";
+  charCount.textContent = "0/50000";
   renderMessages();
   renderTypingDrafts();
   renderPeople([], 0);
@@ -198,7 +231,7 @@ function switchRoom(roomId, options = {}) {
 }
 
 function setConnection(label, state) {
-  connectionLabel.textContent = label;
+  if (connectionLabel) connectionLabel.textContent = label;
   statusDot.classList.toggle("online", state === "online");
   statusDot.classList.toggle("offline", state === "offline");
 }
@@ -241,7 +274,7 @@ function saveDraftSoon() {
 function restoreDraft() {
   const savedDraft = localStorage.getItem(getDraftKey()) || "";
   messageInput.value = savedDraft;
-  charCount.textContent = `${savedDraft.length} / 800`;
+  charCount.textContent = `${savedDraft.length}/50000`;
   draftStatus.textContent = savedDraft ? "Draft restored" : "Draft ready";
   updateOwnLivePreview();
   updateSendState();
@@ -274,7 +307,7 @@ async function copyText(value, button) {
 
   try {
     await navigator.clipboard.writeText(text);
-    button.textContent = "Copied";
+    if (button) button.textContent = "Copied";
   } catch {
     const textarea = document.createElement("textarea");
     textarea.value = text;
@@ -285,14 +318,16 @@ async function copyText(value, button) {
     textarea.select();
     document.execCommand("copy");
     textarea.remove();
-    button.textContent = "Copied";
+    if (button) button.textContent = "Copied";
   }
 
   showToast("Copied to clipboard.");
 
-  setTimeout(() => {
-    button.textContent = button.dataset.defaultLabel || "Copy";
-  }, 1400);
+  if (button) {
+    setTimeout(() => {
+      button.textContent = button.dataset.defaultLabel || "Copy";
+    }, 1400);
+  }
 }
 
 function formatTime(value) {
@@ -330,7 +365,7 @@ function updateCountdowns() {
     const bar = card.querySelector(".expiry-bar span");
 
     if (!expiresAt) {
-      label.textContent = "Kept until deleted";
+      label.textContent = "Keep";
       bar.style.width = "100%";
       return;
     }
@@ -344,9 +379,9 @@ function updateCountdowns() {
 
 function renderMessages() {
   messagesEl.innerHTML = "";
-  messageCount.textContent = `${messages.length} ${messages.length === 1 ? "note" : "notes"}`;
-  copyAllButton.disabled = messages.length === 0;
-  clearRoomButton.disabled = messages.length === 0;
+  if (messageCount) messageCount.textContent = `${messages.length} ${messages.length === 1 ? "note" : "notes"}`;
+  if (copyAllButton) copyAllButton.disabled = messages.length === 0;
+  if (clearRoomButton) clearRoomButton.disabled = messages.length === 0;
 
   if (messages.length === 0) {
     const empty = document.createElement("div");
@@ -371,25 +406,39 @@ function renderMessages() {
     const editButton = node.querySelector(".edit-message");
     const cancelButton = node.querySelector(".cancel-edit");
     const deleteButton = node.querySelector(".delete-message");
+    const menuBtn = node.querySelector(".msg-menu-btn");
+    const dropdown = node.querySelector(".msg-dropdown");
 
-    avatar.style.background = message.authorColor || "#0b7a75";
+    avatar.style.background = message.authorColor || "#6366f1";
     node.dataset.createdAt = message.createdAt;
     node.dataset.expiresAt = message.expiresAt || "";
     author.textContent = message.authorName || "Guest";
     timestamp.textContent = message.updatedAt !== message.createdAt
       ? `Edited ${formatTime(message.updatedAt)}`
-      : `Shared ${formatTime(message.createdAt)}`;
+      : `${formatTime(message.createdAt)}`;
     text.textContent = message.text;
     editInput.value = message.text;
-    expiresLabel.textContent = message.expiresAt ? "Calculating..." : "Kept until deleted";
+    expiresLabel.textContent = message.expiresAt ? "..." : "Keep";
+
+    if (menuBtn && dropdown) {
+      menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.msg-dropdown').forEach(d => {
+          if (d !== dropdown) d.classList.add('hidden');
+        });
+        dropdown.classList.toggle('hidden');
+      });
+    }
 
     copyButton.addEventListener("click", () => {
       copyText(formatMessageForCopy(message), copyButton);
+      dropdown.classList.add('hidden');
     });
 
     editButton.addEventListener("click", () => {
       editForm.hidden = false;
       text.hidden = true;
+      dropdown.classList.add('hidden');
       editInput.focus();
     });
 
@@ -408,6 +457,7 @@ function renderMessages() {
 
     deleteButton.addEventListener("click", () => {
       send({ type: "delete", id: message.id });
+      dropdown.classList.add('hidden');
     });
 
     messagesEl.append(node);
@@ -428,13 +478,13 @@ function renderTypingDrafts() {
 
     const avatar = document.createElement("span");
     avatar.className = "avatar";
-    avatar.style.background = draft.authorColor || "#0b7a75";
+    avatar.style.background = draft.authorColor || "#6366f1";
 
     const body = document.createElement("div");
     const heading = document.createElement("strong");
     const text = document.createElement("p");
 
-    heading.textContent = `${draft.authorName || "Guest"} is typing live`;
+    heading.textContent = `${draft.authorName || "Guest"} is typing...`;
     text.textContent = draft.text;
 
     body.append(heading, text);
@@ -466,7 +516,7 @@ function renderPeople(users, count) {
 
     const avatar = document.createElement("span");
     avatar.className = "avatar";
-    avatar.style.background = user.color || "#0b7a75";
+    avatar.style.background = user.color || "#6366f1";
 
     const name = document.createElement("span");
     name.textContent = user.id === clientId ? `${user.name} (you)` : user.name;
@@ -475,6 +525,33 @@ function renderPeople(users, count) {
     peopleList.append(item);
   }
 }
+
+// Sidebar toggle logic
+function toggleSidebar() {
+  if (sidebar) sidebar.classList.toggle('open');
+  if (sidebarOverlay) {
+    sidebarOverlay.classList.toggle('hidden');
+    sidebarOverlay.classList.toggle('active');
+  }
+}
+
+if (toggleSidebarBtn) toggleSidebarBtn.addEventListener('click', toggleSidebar);
+if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', toggleSidebar);
+if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
+
+// Board Menu Dropdown
+if (boardMenuBtn && boardMenu) {
+  boardMenuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    boardMenu.classList.toggle('hidden');
+  });
+}
+
+// Global click to close dropdowns
+document.addEventListener('click', () => {
+  if (boardMenu) boardMenu.classList.add('hidden');
+  document.querySelectorAll('.msg-dropdown').forEach(d => d.classList.add('hidden'));
+});
 
 saveNameButton.addEventListener("click", () => {
   const name = nameInput.value.trim();
@@ -490,15 +567,18 @@ copyLinkButton.addEventListener("click", async () => {
   copyText(roomLink.value, copyLinkButton);
 });
 
-copyAllButton.addEventListener("click", () => {
-  const text = messages
-    .slice()
-    .sort((first, second) => first.createdAt - second.createdAt)
-    .map(formatMessageForCopy)
-    .join("\n\n");
+if (copyAllButton) {
+  copyAllButton.addEventListener("click", () => {
+    const text = messages
+      .slice()
+      .sort((first, second) => first.createdAt - second.createdAt)
+      .map(formatMessageForCopy)
+      .join("\n\n");
 
-  copyText(text, copyAllButton);
-});
+    copyText(text);
+    if (boardMenu) boardMenu.classList.add('hidden');
+  });
+}
 
 newRoomButton.addEventListener("click", () => {
   const roomId = generateRoomId();
@@ -506,10 +586,20 @@ newRoomButton.addEventListener("click", () => {
   updateRoomUi();
   copyText(roomLink.value, newRoomButton);
   switchRoom(roomId);
+  if (sidebar) sidebar.classList.remove('open');
+  if (sidebarOverlay) {
+    sidebarOverlay.classList.remove('active');
+    sidebarOverlay.classList.add('hidden');
+  }
 });
 
 defaultRoomButton.addEventListener("click", () => {
   switchRoom("public");
+  if (sidebar) sidebar.classList.remove('open');
+  if (sidebarOverlay) {
+    sidebarOverlay.classList.remove('active');
+    sidebarOverlay.classList.add('hidden');
+  }
 });
 
 expirySelect.addEventListener("change", () => {
@@ -531,7 +621,14 @@ nameInput.addEventListener("keydown", (event) => {
 });
 
 messageInput.addEventListener("input", () => {
-  charCount.textContent = `${messageInput.value.length} / 800`;
+  // Auto-resize textarea
+  messageInput.style.height = 'auto';
+  messageInput.style.height = (messageInput.scrollHeight) + 'px';
+  if (messageInput.value === "") {
+    messageInput.style.height = 'auto';
+  }
+  
+  charCount.textContent = `${messageInput.value.length}/50000`;
   updateOwnLivePreview();
   updateSendState();
   saveDraftSoon();
@@ -539,7 +636,7 @@ messageInput.addEventListener("input", () => {
 });
 
 messageInput.addEventListener("keydown", (event) => {
-  if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && !shareButton.disabled) {
+  if (event.key === "Enter" && !event.shiftKey && !shareButton.disabled) {
     event.preventDefault();
     messageForm.requestSubmit();
   }
@@ -559,24 +656,31 @@ messageForm.addEventListener("submit", (event) => {
   }
 
   messageInput.value = "";
-  charCount.textContent = "0 / 800";
+  messageInput.style.height = 'auto';
+  charCount.textContent = "0/50000";
   updateOwnLivePreview();
   saveDraft();
   updateSendState();
   send({ type: "typing", text: "" });
-  showToast("Shared with everyone in this room.");
+  showToast("Sent.");
+  
+  // Re-focus unless on mobile where it might be annoying, but for chat it's good.
   messageInput.focus();
+  setTimeout(scrollToBottom, 50);
 });
 
-clearRoomButton.addEventListener("click", () => {
-  if (messages.length === 0) return;
+if (clearRoomButton) {
+  clearRoomButton.addEventListener("click", () => {
+    if (messages.length === 0) return;
 
-  if (!window.confirm("Clear every message in this room for everyone connected?")) return;
+    if (!window.confirm("Clear every message in this room for everyone connected?")) return;
 
-  if (send({ type: "clear" })) {
-    showToast("The room has been cleared.");
-  }
-});
+    if (send({ type: "clear" })) {
+      showToast("The room has been cleared.");
+      if (boardMenu) boardMenu.classList.add('hidden');
+    }
+  });
+}
 
 const savedExpiry = localStorage.getItem("share-text-live:expiry");
 if (savedExpiry && [...expirySelect.options].some((option) => option.value === savedExpiry)) {
