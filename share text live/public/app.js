@@ -56,6 +56,23 @@ const attachmentPreview = document.getElementById("attachment-preview");
 const attachmentName = document.getElementById("attachment-name");
 const removeAttachmentBtn = document.getElementById("remove-attachment");
 
+// Lightbox Elements
+const lightbox = document.getElementById("lightbox");
+const lightboxCloseBtn = document.getElementById("lightbox-close");
+
+if (lightboxCloseBtn) {
+  lightboxCloseBtn.addEventListener('click', () => {
+    lightbox.classList.add('hidden');
+  });
+}
+if (lightbox) {
+  lightbox.addEventListener('click', (e) => {
+    if (e.target === lightbox) {
+      lightbox.classList.add('hidden');
+    }
+  });
+}
+
 let socket;
 let clientId = "";
 let messages = [];
@@ -605,6 +622,14 @@ function renderMessages() {
     }
     
     if (window.marked && window.DOMPurify) {
+      if (window.hljs) {
+        marked.setOptions({
+          highlight: function(code, lang) {
+            const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+            return hljs.highlight(code, { language }).value;
+          }
+        });
+      }
       const rawHtml = marked.parse(messageContent || "", { breaks: true, gfm: true });
       text.innerHTML = DOMPurify.sanitize(rawHtml);
     } else {
@@ -620,18 +645,50 @@ function renderMessages() {
       attachmentContainer.innerHTML = '';
       
       if (attachmentData.type.startsWith("image/")) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "image-preview-wrapper";
+        
         const img = document.createElement("img");
         img.src = attachmentData.data;
         img.alt = attachmentData.name;
         img.className = "message-image-preview";
+        img.style.cursor = "pointer";
         
         // Modal for full image
-        img.style.cursor = "pointer";
         img.onclick = () => {
-          const w = window.open("");
-          if (w) w.document.write(`<img src="${attachmentData.data}" style="max-width:100%; max-height:100vh; object-fit:contain; margin:auto; display:block;">`);
+          const lightbox = document.getElementById("lightbox");
+          const lightboxImg = document.getElementById("lightbox-img");
+          const lightboxDownload = document.getElementById("lightbox-download");
+          
+          lightboxImg.src = attachmentData.data;
+          lightboxImg.alt = attachmentData.name;
+          
+          // Setup lightbox download button
+          lightboxDownload.onclick = () => {
+            const a = document.createElement("a");
+            a.href = attachmentData.data;
+            a.download = attachmentData.name;
+            a.click();
+          };
+          
+          lightbox.classList.remove("hidden");
         };
-        attachmentContainer.appendChild(img);
+        
+        // Inline Download button overlay
+        const dlBtn = document.createElement("button");
+        dlBtn.className = "image-overlay-download";
+        dlBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download';
+        dlBtn.onclick = (e) => {
+          e.stopPropagation();
+          const a = document.createElement("a");
+          a.href = attachmentData.data;
+          a.download = attachmentData.name;
+          a.click();
+        };
+        
+        wrapper.appendChild(img);
+        wrapper.appendChild(dlBtn);
+        attachmentContainer.appendChild(wrapper);
       } else {
         const fileBox = document.createElement("div");
         fileBox.className = "message-file-box";
@@ -838,6 +895,27 @@ if (cancelReplyBtn) {
 async function processFile(file) {
   if (file.size > 3 * 1024 * 1024) {
     showToast("File is too large! Maximum is 3MB.");
+    return;
+  }
+  
+  // If it's a code/text file, insert its contents directly into the composer
+  const isCodeOrText = file.type.startsWith("text/") || 
+    file.name.match(/\.(js|py|html|css|json|md|c|cpp|java|ts|tsx|jsx|php|sh|sql)$/i);
+    
+  if (isCodeOrText) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      let ext = file.name.split('.').pop();
+      if (ext === 'txt') ext = '';
+      const textContent = `\`\`\`${ext}\n${e.target.result}\n\`\`\``;
+      
+      const currentVal = messageInput.value;
+      messageInput.value = currentVal ? currentVal + "\n\n" + textContent : textContent;
+      updateSendState();
+      messageInput.dispatchEvent(new Event('input', { bubbles: true }));
+      showToast(`Pasted ${file.name} as code block`);
+    };
+    reader.readAsText(file);
     return;
   }
   

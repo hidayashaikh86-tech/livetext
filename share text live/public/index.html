@@ -24,6 +24,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
+    <!-- Highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -200,6 +203,19 @@
     <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    
+    <!-- Lightbox Modal for Image Previews -->
+    <div id="lightbox" class="lightbox hidden">
+      <div class="lightbox-toolbar">
+        <button id="lightbox-download" class="icon-button" aria-label="Download Image" title="Download Image">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <button id="lightbox-close" class="icon-button" aria-label="Close Preview" title="Close Preview">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <img id="lightbox-img" src="" alt="Preview" />
+    </div>
 
     <template id="message-template">
       <article class="message-card">
@@ -246,6 +262,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
