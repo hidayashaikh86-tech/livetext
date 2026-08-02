@@ -898,27 +898,6 @@ async function processFile(file) {
     return;
   }
   
-  // If it's a code/text file, insert its contents directly into the composer
-  const isCodeOrText = file.type.startsWith("text/") || 
-    file.name.match(/\.(js|py|html|css|json|md|c|cpp|java|ts|tsx|jsx|php|sh|sql)$/i);
-    
-  if (isCodeOrText) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      let ext = file.name.split('.').pop();
-      if (ext === 'txt') ext = '';
-      const textContent = `\`\`\`${ext}\n${e.target.result}\n\`\`\``;
-      
-      const currentVal = messageInput.value;
-      messageInput.value = currentVal ? currentVal + "\n\n" + textContent : textContent;
-      updateSendState();
-      messageInput.dispatchEvent(new Event('input', { bubbles: true }));
-      showToast(`Pasted ${file.name} as code block`);
-    };
-    reader.readAsText(file);
-    return;
-  }
-  
   const reader = new FileReader();
   reader.onload = (e) => {
     currentAttachment = {
