@@ -91,6 +91,58 @@ function broadcastToRoom(roomId, payload) {
 }
 
 function broadcastPresence(roomId) {
+
+function broadcastNewMessage(room, message) {
+  const msgPayload = JSON.stringify({ type: "newMessage", message });
+  const clientsInRoom = Array.from(clients.values()).filter(c => c.roomId === room.id);
+  for (const client of clientsInRoom) {
+    if (client.socket.readyState === 1 /* OPEN */) {
+      client.socket.write(createFrame(msgPayload));
+    }
+  }
+}
+
+function broadcastUpdateMessage(room, message) {
+  const msgPayload = JSON.stringify({ type: "updateMessage", message });
+  const clientsInRoom = Array.from(clients.values()).filter(c => c.roomId === room.id);
+  for (const client of clientsInRoom) {
+    if (client.socket.readyState === 1 /* OPEN */) {
+      client.socket.write(createFrame(msgPayload));
+    }
+  }
+}
+
+function broadcastDeleteMessage(room, messageId) {
+  const msgPayload = JSON.stringify({ type: "deleteMessage", messageId, pinnedMessageId: room.pinnedMessageId });
+  const clientsInRoom = Array.from(clients.values()).filter(c => c.roomId === room.id);
+  for (const client of clientsInRoom) {
+    if (client.socket.readyState === 1 /* OPEN */) {
+      client.socket.write(createFrame(msgPayload));
+    }
+  }
+}
+
+function broadcastPin(room) {
+  const msgPayload = JSON.stringify({ type: "pinMessage", pinnedMessageId: room.pinnedMessageId });
+  const clientsInRoom = Array.from(clients.values()).filter(c => c.roomId === room.id);
+  for (const client of clientsInRoom) {
+    if (client.socket.readyState === 1 /* OPEN */) {
+      client.socket.write(createFrame(msgPayload));
+    }
+  }
+}
+
+function broadcastClearMessages(room) {
+  const msgPayload = JSON.stringify({ type: "clearMessages" });
+  const clientsInRoom = Array.from(clients.values()).filter(c => c.roomId === room.id);
+  for (const client of clientsInRoom) {
+    if (client.socket.readyState === 1 /* OPEN */) {
+      client.socket.write(createFrame(msgPayload));
+    }
+  }
+}
+
+function handleData(socket, buffer) {
   const roomClients = clientsInRoom(roomId);
 
   broadcastToRoom(roomId, {
@@ -264,7 +316,7 @@ function handleClientAction(client, action) {
 
     room.messages.push(message);
     room.typingDrafts.delete(client.id);
-    broadcastMessages(room);
+    broadcastNewMessage(room, message);
     broadcastTyping(room);
     return;
   }
@@ -280,7 +332,7 @@ function handleClientAction(client, action) {
     message.updatedAt = Date.now();
     message.editorId = client.id;
     message.editorName = client.name;
-    broadcastMessages(room);
+    broadcastUpdateMessage(room, message);
     return;
   }
 
@@ -313,21 +365,21 @@ function handleClientAction(client, action) {
     if (room.pinnedMessageId === action.id) {
       room.pinnedMessageId = null;
     }
-    broadcastMessages(room);
+    broadcastDeleteMessage(room, action.id);
     return;
   }
 
   if (action.type === "pin") {
     if (room.messages.some(m => m.id === action.id)) {
       room.pinnedMessageId = action.id;
-      broadcastMessages(room);
+      broadcastPin(room);
     }
     return;
   }
 
   if (action.type === "unpin") {
     room.pinnedMessageId = null;
-    broadcastMessages(room);
+    broadcastPin(room);
     return;
   }
 
@@ -335,7 +387,8 @@ function handleClientAction(client, action) {
     if (room.messages.length === 0) return;
 
     room.messages.length = 0;
-    broadcastMessages(room);
+    room.pinnedMessageId = null;
+    broadcastClearMessages(room);
   }
 }
 

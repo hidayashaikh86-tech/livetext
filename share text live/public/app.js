@@ -160,9 +160,9 @@ async function encryptText(plainText) {
       encoded
     );
     
-    // Convert to base64 without exceeding call stack
-    const ivBase64 = bufferToBase64(iv);
-    const cipherBase64 = bufferToBase64(new Uint8Array(ciphertext));
+    // Convert to base64 without exceeding call stack or blocking main thread
+    const ivBase64 = await bufferToBase64(iv);
+    const cipherBase64 = await bufferToBase64(new Uint8Array(ciphertext));
     
     return `${ivBase64}:${cipherBase64}`;
   } catch (e) {
@@ -171,26 +171,21 @@ async function encryptText(plainText) {
   }
 }
 
-// Helper to convert Uint8Array to base64 safely
-function bufferToBase64(buffer) {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
+// Helper to convert Uint8Array to base64 non-blocking (much faster for large files)
+async function bufferToBase64(buffer) {
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([buffer]);
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
-// Helper to convert base64 to Uint8Array safely
-function base64ToBuffer(base64) {
-  const binary_string = window.atob(base64);
-  const len = binary_string.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binary_string.charCodeAt(i);
-  }
-  return bytes;
+// Helper to convert base64 to Uint8Array safely and fast
+async function base64ToBuffer(base64) {
+  const res = await fetch(`data:application/octet-stream;base64,${base64}`);
+  return await res.arrayBuffer();
 }
 
 async function decryptText(encryptedPayload) {
@@ -200,8 +195,8 @@ async function decryptText(encryptedPayload) {
 
   try {
     const [ivBase64, cipherBase64] = encryptedPayload.split(':');
-    const iv = base64ToBuffer(ivBase64);
-    const ciphertext = base64ToBuffer(cipherBase64);
+    const iv = await base64ToBuffer(ivBase64);
+    const ciphertext = await base64ToBuffer(cipherBase64);
     
     const decrypted = await window.crypto.subtle.decrypt(
       { name: "AES-GCM", iv: iv },
@@ -248,6 +243,9 @@ async function connect() {
     if (payload.drafts) {
       await Promise.all(payload.drafts.map(async d => { d.text = await decryptText(d.text); }));
     }
+    if (payload.message) {
+      payload.message.text = await decryptText(payload.message.text);
+    }
 
     if (payload.type === "hello") {
       clientId = payload.clientId;
@@ -278,6 +276,41 @@ async function connect() {
       renderMessages();
       renderPinnedMessage();
       if (isAtBottom) scrollToBottom();
+    }
+    
+    if (payload.type === "newMessage") {
+      messages.push(payload.message);
+      renderMessages();
+      if (isAtBottom) scrollToBottom();
+    }
+    
+    if (payload.type === "updateMessage") {
+      const idx = messages.findIndex(m => m.id === payload.message.id);
+      if (idx !== -1) messages[idx] = payload.message;
+      renderMessages();
+      renderPinnedMessage();
+    }
+    
+    if (payload.type === "deleteMessage") {
+      messages = messages.filter(m => m.id !== payload.messageId);
+      if (payload.pinnedMessageId !== undefined) {
+        pinnedMessageId = payload.pinnedMessageId;
+      }
+      renderMessages();
+      renderPinnedMessage();
+    }
+    
+    if (payload.type === "pinMessage") {
+      pinnedMessageId = payload.pinnedMessageId || null;
+      renderMessages();
+      renderPinnedMessage();
+    }
+
+    if (payload.type === "clearMessages") {
+      messages = [];
+      pinnedMessageId = null;
+      renderMessages();
+      renderPinnedMessage();
     }
 
     if (payload.type === "presence") {
