@@ -49,6 +49,13 @@ const pinnedAuthor = document.getElementById("pinned-author");
 const pinnedSnippet = document.getElementById("pinned-snippet");
 const closePinnedBtn = document.getElementById("close-pinned");
 
+// Attachment Elements
+const attachButton = document.getElementById("attach-button");
+const fileInput = document.getElementById("file-input");
+const attachmentPreview = document.getElementById("attachment-preview");
+const attachmentName = document.getElementById("attachment-name");
+const removeAttachmentBtn = document.getElementById("remove-attachment");
+
 let socket;
 let clientId = "";
 let messages = [];
@@ -63,6 +70,7 @@ let draftSaveTimer;
 let toastTimer;
 let roomSwitchInProgress = false;
 let replyingToMessage = null;
+let currentAttachment = null;
 let pinnedMessageId = null;
 let roomCryptoKey = null;
 
@@ -317,6 +325,7 @@ function switchRoom(roomId, options = {}) {
   clientId = "";
   pinnedMessageId = null;
   setReplyingTo(null);
+  clearAttachment();
   messageInput.value = "";
   charCount.textContent = "0/50000";
   renderMessages();
@@ -350,7 +359,7 @@ function showToast(message) {
 }
 
 function updateSendState() {
-  shareButton.disabled = !isConnected || !messageInput.value.trim();
+  shareButton.disabled = !isConnected || (!messageInput.value.trim() && !currentAttachment);
 }
 
 function getDraftKey() {
@@ -546,16 +555,70 @@ function renderMessages() {
     timestamp.textContent = message.updatedAt !== message.createdAt
       ? `Edited ${formatTime(message.updatedAt)}`
       : `${formatTime(message.createdAt)}`;
+      
+    let messageContent = message.text || "";
+    let attachmentData = null;
     
-    if (window.marked && window.DOMPurify) {
-      const rawHtml = marked.parse(message.text || "", { breaks: true, gfm: true });
-      text.innerHTML = DOMPurify.sanitize(rawHtml);
-    } else {
-      text.textContent = message.text;
+    if (messageContent.startsWith('{"__v":1')) {
+      try {
+        const parsed = JSON.parse(messageContent);
+        messageContent = parsed.text;
+        attachmentData = parsed.file;
+      } catch (e) {}
     }
     
-    editInput.value = message.text;
+    if (window.marked && window.DOMPurify) {
+      const rawHtml = marked.parse(messageContent || "", { breaks: true, gfm: true });
+      text.innerHTML = DOMPurify.sanitize(rawHtml);
+    } else {
+      text.textContent = messageContent;
+    }
+    
+    editInput.value = messageContent;
     expiresLabel.textContent = message.expiresAt ? "..." : "Keep";
+
+    const attachmentContainer = node.querySelector(".message-attachment-container");
+    if (attachmentData) {
+      attachmentContainer.classList.remove("hidden");
+      attachmentContainer.innerHTML = '';
+      
+      if (attachmentData.type.startsWith("image/")) {
+        const img = document.createElement("img");
+        img.src = attachmentData.data;
+        img.alt = attachmentData.name;
+        img.className = "message-image-preview";
+        
+        // Modal for full image
+        img.style.cursor = "pointer";
+        img.onclick = () => {
+          const w = window.open("");
+          if (w) w.document.write(`<img src="${attachmentData.data}" style="max-width:100%; max-height:100vh; object-fit:contain; margin:auto; display:block;">`);
+        };
+        attachmentContainer.appendChild(img);
+      } else {
+        const fileBox = document.createElement("div");
+        fileBox.className = "message-file-box";
+        
+        const fileIcon = document.createElement("span");
+        fileIcon.className = "file-icon";
+        fileIcon.textContent = "📄";
+        
+        const fileName = document.createElement("span");
+        fileName.className = "file-name";
+        fileName.textContent = attachmentData.name;
+        
+        const downloadBtn = document.createElement("a");
+        downloadBtn.className = "btn-secondary file-download";
+        downloadBtn.textContent = "Download";
+        downloadBtn.href = attachmentData.data;
+        downloadBtn.download = attachmentData.name;
+        
+        fileBox.append(fileIcon, fileName, downloadBtn);
+        attachmentContainer.appendChild(fileBox);
+      }
+    } else {
+      attachmentContainer.classList.add("hidden");
+    }
 
     if (menuBtn && dropdown) {
       menuBtn.addEventListener('click', (e) => {
@@ -588,9 +651,18 @@ function renderMessages() {
     editForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const nextText = editInput.value.trim();
-      if (!nextText) return;
+      if (!nextText && !attachmentData) return;
       
-      const encryptedText = await encryptText(nextText);
+      let editPayloadData = nextText;
+      if (attachmentData || nextText.startsWith('{"__v":1')) {
+        editPayloadData = JSON.stringify({
+          __v: 1,
+          text: nextText,
+          file: attachmentData
+        });
+      }
+      
+      const encryptedText = await encryptText(editPayloadData);
       send({ type: "update", id: message.id, text: encryptedText });
     });
 
@@ -724,6 +796,76 @@ function setReplyingTo(message) {
 if (cancelReplyBtn) {
   cancelReplyBtn.addEventListener('click', () => setReplyingTo(null));
 }
+
+// Attachment Logic
+async function processFile(file) {
+  if (file.size > 3 * 1024 * 1024) {
+    showToast("File is too large! Maximum is 3MB.");
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    currentAttachment = {
+      name: file.name || "Pasted Image",
+      type: file.type || "application/octet-stream",
+      data: e.target.result // base64 data url
+    };
+    if (attachmentPreview) attachmentPreview.classList.remove("hidden");
+    if (attachmentName) attachmentName.textContent = currentAttachment.name;
+    updateSendState();
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearAttachment() {
+  currentAttachment = null;
+  if (attachmentPreview) attachmentPreview.classList.add("hidden");
+  updateSendState();
+}
+
+if (attachButton && fileInput) {
+  attachButton.addEventListener("click", () => fileInput.click());
+  
+  fileInput.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    await processFile(file);
+    fileInput.value = ""; // Reset
+  });
+}
+
+if (removeAttachmentBtn) {
+  removeAttachmentBtn.addEventListener("click", () => {
+    clearAttachment();
+  });
+}
+
+// Handle drop and paste globally for attachments
+document.addEventListener("paste", async (e) => {
+  const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+  for (let index in items) {
+    const item = items[index];
+    if (item.kind === 'file') {
+      const blob = item.getAsFile();
+      await processFile(blob);
+      return;
+    }
+  }
+});
+
+document.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+});
+
+document.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    await processFile(e.dataTransfer.files[0]);
+  }
+});
 
 function renderPinnedMessage() {
   if (pinnedMessageId && pinnedBanner) {
@@ -877,9 +1019,19 @@ messageForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const text = messageInput.value.trim();
-  if (!text) return;
+  if (!text && !currentAttachment) return;
 
-  const encryptedText = await encryptText(text);
+  let payloadData = text;
+  
+  if (currentAttachment || text.startsWith('{"__v":1')) {
+    payloadData = JSON.stringify({
+      __v: 1,
+      text: text,
+      file: currentAttachment
+    });
+  }
+
+  const encryptedText = await encryptText(payloadData);
   const payload = { type: "create", text: encryptedText, expiresInMs: Number(expirySelect.value) };
   if (replyingToMessage) {
     payload.replyTo = replyingToMessage.id;
@@ -893,6 +1045,7 @@ messageForm.addEventListener("submit", async (event) => {
   messageInput.value = "";
   messageInput.style.height = 'auto';
   charCount.textContent = "0/50000";
+  clearAttachment();
   setReplyingTo(null);
   updateOwnLivePreview();
   saveDraft();

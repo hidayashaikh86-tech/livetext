@@ -1030,3 +1030,70 @@ textarea {
   font-size: 0.95rem;
   padding: 24px;
 }
+
+/* File Sharing & Attachments */
+.attachment-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-hover);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border-left: 3px solid var(--accent);
+}
+
+.attachment-preview .attachment-icon {
+  font-size: 1.2rem;
+}
+
+#attachment-name {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.message-attachment-container {
+  margin-bottom: 12px;
+}
+
+.message-image-preview {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  object-fit: cover;
+  display: block;
+}
+
+.message-file-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  padding: 12px;
+  border-radius: 8px;
+  max-width: 400px;
+}
+
+.message-file-box .file-icon {
+  font-size: 1.5rem;
+}
+
+.message-file-box .file-name {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.message-file-box .file-download {
+  font-size: 0.8rem;
+  padding: 6px 12px;
+}
