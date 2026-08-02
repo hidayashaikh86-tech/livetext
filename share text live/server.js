@@ -142,19 +142,19 @@ function broadcastTyping(room) {
   broadcastToRoom(room.id, { type: "typing", roomId: room.id, drafts: activeTypingDrafts(room) });
 }
 
-function parseFrame(buffer) {
-  if (buffer.length < 6) return null;
+function tryParseFrame(buffer) {
+  if (buffer.length < 2) return null;
 
   const opcode = buffer[0] & 0x0f;
   let length = buffer[1] & 0x7f;
   let offset = 2;
 
   if (length === 126) {
-    if (buffer.length < 8) return null;
+    if (buffer.length < 4) return null;
     length = buffer.readUInt16BE(offset);
     offset += 2;
   } else if (length === 127) {
-    if (buffer.length < 14) return null;
+    if (buffer.length < 10) return null;
     const high = buffer.readUInt32BE(offset);
     const low = buffer.readUInt32BE(offset + 4);
     length = high * 2 ** 32 + low;
@@ -162,24 +162,38 @@ function parseFrame(buffer) {
   }
 
   const masked = (buffer[1] & 0x80) === 0x80;
-  if (!masked || buffer.length < offset + 4 + length) return null;
+  if (masked) {
+    if (buffer.length < offset + 4) return null;
+    offset += 4;
+  }
 
-  const mask = buffer.subarray(offset, offset + 4);
-  offset += 4;
+  const totalFrameLength = offset + length;
+  if (buffer.length < totalFrameLength) return null;
+
+  let mask;
+  if (masked) {
+    mask = buffer.subarray(offset - 4, offset);
+  }
 
   const payload = Buffer.alloc(length);
   for (let index = 0; index < length; index += 1) {
-    payload[index] = buffer[offset + index] ^ mask[index % 4];
+    payload[index] = masked ? buffer[offset + index] ^ mask[index % 4] : buffer[offset + index];
   }
 
-  if (opcode === 8) return { type: "close" };
-  if (opcode !== 1) return null;
-
-  try {
-    return { type: "message", data: JSON.parse(payload.toString("utf8")) };
-  } catch {
-    return null;
+  let frame = null;
+  if (opcode === 8) {
+    frame = { type: "close" };
+  } else if (opcode === 1) {
+    try {
+      frame = { type: "message", data: JSON.parse(payload.toString("utf8")) };
+    } catch {
+      frame = { type: "invalid" };
+    }
+  } else {
+    frame = { type: "ignore" };
   }
+
+  return { frame, bytesConsumed: totalFrameLength };
 }
 
 function cleanText(value) {
@@ -424,15 +438,26 @@ server.on("upgrade", (req, socket) => {
   });
   broadcastPresence(room.id);
 
-  socket.on("data", (buffer) => {
-    const frame = parseFrame(buffer);
-    if (!frame) return;
-    if (frame.type === "close") {
-      socket.end();
-      return;
-    }
+  let dataBuffer = Buffer.alloc(0);
 
-    handleClientAction(client, frame.data);
+  socket.on("data", (chunk) => {
+    dataBuffer = Buffer.concat([dataBuffer, chunk]);
+
+    while (dataBuffer.length > 0) {
+      const parsed = tryParseFrame(dataBuffer);
+      if (!parsed) break; // Wait for more data
+
+      dataBuffer = dataBuffer.subarray(parsed.bytesConsumed);
+
+      if (parsed.frame.type === "close") {
+        socket.end();
+        return;
+      }
+
+      if (parsed.frame.type === "message") {
+        handleClientAction(client, parsed.frame.data);
+      }
+    }
   });
 
   socket.on("close", () => {
