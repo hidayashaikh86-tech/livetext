@@ -1115,6 +1115,29 @@ messageForm.addEventListener("submit", async (event) => {
   const text = messageInput.value.trim();
   if (!text && !currentAttachment) return;
 
+  const originalBtnContent = shareButton.innerHTML;
+  
+  const finishSending = () => {
+    messageInput.value = "";
+    messageInput.style.height = 'auto';
+    charCount.textContent = "0/50000";
+    clearAttachment();
+    setReplyingTo(null);
+    updateOwnLivePreview();
+    saveDraft();
+    updateSendState();
+    send({ type: "typing", text: "" });
+    showToast("Sent.");
+    
+    shareButton.innerHTML = originalBtnContent;
+    shareButton.disabled = false;
+    messageInput.disabled = false;
+    
+    // Re-focus unless on mobile where it might be annoying, but for chat it's good.
+    messageInput.focus();
+    setTimeout(scrollToBottom, 50);
+  };
+
   let payloadData = text;
   
   if (currentAttachment || text.startsWith('{"__v":1')) {
@@ -1123,8 +1146,17 @@ messageForm.addEventListener("submit", async (event) => {
       text: text,
       file: currentAttachment
     });
+    
+    // If it's a large attachment, show a sending state
+    if (currentAttachment && currentAttachment.data.length > 100000) {
+      shareButton.innerHTML = "Sending...";
+      shareButton.disabled = true;
+      messageInput.disabled = true;
+    }
   }
 
+  // We await this to avoid freezing the UI for huge strings if possible,
+  // but SubtleCrypto encrypt is extremely fast anyway.
   const encryptedText = await encryptText(payloadData);
   const payload = { type: "create", text: encryptedText, expiresInMs: Number(expirySelect.value) };
   if (replyingToMessage) {
@@ -1133,23 +1165,23 @@ messageForm.addEventListener("submit", async (event) => {
 
   if (!send(payload)) {
     showToast("Waiting for the live connection before sharing.");
+    shareButton.innerHTML = originalBtnContent;
+    shareButton.disabled = false;
+    messageInput.disabled = false;
     return;
   }
 
-  messageInput.value = "";
-  messageInput.style.height = 'auto';
-  charCount.textContent = "0/50000";
-  clearAttachment();
-  setReplyingTo(null);
-  updateOwnLivePreview();
-  saveDraft();
-  updateSendState();
-  send({ type: "typing", text: "" });
-  showToast("Sent.");
-  
-  // Re-focus unless on mobile where it might be annoying, but for chat it's good.
-  messageInput.focus();
-  setTimeout(scrollToBottom, 50);
+  // Wait for the WebSocket buffer to drain before confirming sent
+  if (socket && socket.bufferedAmount > 0) {
+    const checkBuffer = setInterval(() => {
+      if (!socket || socket.readyState !== WebSocket.OPEN || socket.bufferedAmount === 0) {
+        clearInterval(checkBuffer);
+        finishSending();
+      }
+    }, 50);
+  } else {
+    finishSending();
+  }
 });
 
 if (clearRoomButton) {
