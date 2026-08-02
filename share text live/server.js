@@ -91,58 +91,6 @@ function broadcastToRoom(roomId, payload) {
 }
 
 function broadcastPresence(roomId) {
-
-function broadcastNewMessage(room, message) {
-  const msgPayload = JSON.stringify({ type: "newMessage", message });
-  const clientsInRoom = Array.from(clients.values()).filter(c => c.roomId === room.id);
-  for (const client of clientsInRoom) {
-    if (client.socket.readyState === 1 /* OPEN */) {
-      client.socket.write(createFrame(msgPayload));
-    }
-  }
-}
-
-function broadcastUpdateMessage(room, message) {
-  const msgPayload = JSON.stringify({ type: "updateMessage", message });
-  const clientsInRoom = Array.from(clients.values()).filter(c => c.roomId === room.id);
-  for (const client of clientsInRoom) {
-    if (client.socket.readyState === 1 /* OPEN */) {
-      client.socket.write(createFrame(msgPayload));
-    }
-  }
-}
-
-function broadcastDeleteMessage(room, messageId) {
-  const msgPayload = JSON.stringify({ type: "deleteMessage", messageId, pinnedMessageId: room.pinnedMessageId });
-  const clientsInRoom = Array.from(clients.values()).filter(c => c.roomId === room.id);
-  for (const client of clientsInRoom) {
-    if (client.socket.readyState === 1 /* OPEN */) {
-      client.socket.write(createFrame(msgPayload));
-    }
-  }
-}
-
-function broadcastPin(room) {
-  const msgPayload = JSON.stringify({ type: "pinMessage", pinnedMessageId: room.pinnedMessageId });
-  const clientsInRoom = Array.from(clients.values()).filter(c => c.roomId === room.id);
-  for (const client of clientsInRoom) {
-    if (client.socket.readyState === 1 /* OPEN */) {
-      client.socket.write(createFrame(msgPayload));
-    }
-  }
-}
-
-function broadcastClearMessages(room) {
-  const msgPayload = JSON.stringify({ type: "clearMessages" });
-  const clientsInRoom = Array.from(clients.values()).filter(c => c.roomId === room.id);
-  for (const client of clientsInRoom) {
-    if (client.socket.readyState === 1 /* OPEN */) {
-      client.socket.write(createFrame(msgPayload));
-    }
-  }
-}
-
-function handleData(socket, buffer) {
   const roomClients = clientsInRoom(roomId);
 
   broadcastToRoom(roomId, {
@@ -155,6 +103,26 @@ function handleData(socket, buffer) {
       color: client.color
     }))
   });
+}
+
+function broadcastNewMessage(room, message) {
+  broadcastToRoom(room.id, { type: "newMessage", message });
+}
+
+function broadcastUpdateMessage(room, message) {
+  broadcastToRoom(room.id, { type: "updateMessage", message });
+}
+
+function broadcastDeleteMessage(room, messageId) {
+  broadcastToRoom(room.id, { type: "deleteMessage", messageId, pinnedMessageId: room.pinnedMessageId });
+}
+
+function broadcastPin(room) {
+  broadcastToRoom(room.id, { type: "pinMessage", pinnedMessageId: room.pinnedMessageId });
+}
+
+function broadcastClearMessages(room) {
+  broadcastToRoom(room.id, { type: "clearMessages" });
 }
 
 function activeMessages(room) {
