@@ -142,13 +142,38 @@ async function encryptText(plainText) {
       roomCryptoKey,
       encoded
     );
-    const ivBase64 = btoa(String.fromCharCode(...iv));
-    const cipherBase64 = btoa(String.fromCharCode(...new Uint8Array(ciphertext)));
+    
+    // Convert to base64 without exceeding call stack
+    const ivBase64 = bufferToBase64(iv);
+    const cipherBase64 = bufferToBase64(new Uint8Array(ciphertext));
+    
     return `${ivBase64}:${cipherBase64}`;
   } catch (e) {
     console.error("Encryption failed", e);
     return plainText; 
   }
+}
+
+// Helper to convert Uint8Array to base64 safely
+function bufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Helper to convert base64 to Uint8Array safely
+function base64ToBuffer(base64) {
+  const binary_string = window.atob(base64);
+  const len = binary_string.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary_string.charCodeAt(i);
+  }
+  return bytes;
 }
 
 async function decryptText(encryptedPayload) {
@@ -158,8 +183,8 @@ async function decryptText(encryptedPayload) {
 
   try {
     const [ivBase64, cipherBase64] = encryptedPayload.split(':');
-    const iv = new Uint8Array(atob(ivBase64).split('').map(c => c.charCodeAt(0)));
-    const ciphertext = new Uint8Array(atob(cipherBase64).split('').map(c => c.charCodeAt(0)));
+    const iv = base64ToBuffer(ivBase64);
+    const ciphertext = base64ToBuffer(cipherBase64);
     
     const decrypted = await window.crypto.subtle.decrypt(
       { name: "AES-GCM", iv: iv },
