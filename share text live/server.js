@@ -6,7 +6,8 @@ const crypto = require("crypto");
 const PORT = Number(process.env.PORT || 3000);
 const HOST = "0.0.0.0";
 const PUBLIC_DIR = path.join(__dirname, "public");
-const MAX_TEXT_LENGTH = 50000;
+const MAX_TEXT_LENGTH = 200000;
+const MAX_AUTHOR_NAME = 50;
 const DEFAULT_EXPIRES_IN_MS = 2 * 60 * 1000;
 const ALLOWED_EXPIRES_IN_MS = new Set([10 * 1000, 30 * 1000, DEFAULT_EXPIRES_IN_MS, 10 * 60 * 1000, 0]);
 const TYPING_STALE_MS = 4500;
@@ -232,7 +233,8 @@ function handleClientAction(client, action) {
   }
 
   if (action.type === "create") {
-    const text = cleanMessageText(action.text);
+    const safeText = String(action.text || "");
+    const text = safeText.length > MAX_TEXT_LENGTH ? safeText.slice(0, MAX_TEXT_LENGTH) : safeText;
     if (!text) return;
 
     const expiresInMs = parseExpiresInMs(action.expiresInMs);
@@ -258,7 +260,8 @@ function handleClientAction(client, action) {
 
   if (action.type === "update") {
     removeExpiredMessages(room);
-    const text = cleanMessageText(action.text);
+    const safeUpdateText = String(action.text || "");
+    const text = safeUpdateText.length > MAX_TEXT_LENGTH ? safeUpdateText.slice(0, MAX_TEXT_LENGTH) : safeUpdateText;
     const message = room.messages.find((item) => item.id === action.id);
     if (!message || !text) return;
 
@@ -271,7 +274,8 @@ function handleClientAction(client, action) {
   }
 
   if (action.type === "typing") {
-    const text = cleanMessageText(action.text).slice(0, 280);
+    const draftText = String(action.text || "");
+    const text = draftText.length > MAX_TEXT_LENGTH ? draftText.slice(0, MAX_TEXT_LENGTH) : draftText;
 
     if (!text) {
       room.typingDrafts.delete(client.id);
@@ -280,7 +284,7 @@ function handleClientAction(client, action) {
         id: client.id,
         authorName: client.name,
         authorColor: client.color,
-        text,
+        text: text.slice(0, 280),
         updatedAt: Date.now()
       });
     }

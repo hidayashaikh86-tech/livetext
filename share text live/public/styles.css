@@ -654,11 +654,15 @@ textarea {
   padding: 10px 16px;
   border-radius: 8px;
   border-left: 3px solid var(--accent-strong);
+  max-height: 120px;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .live-preview p:last-child {
   font-size: 0.9rem;
   color: var(--muted);
+  word-break: break-word;
 }
 
 .message-form {
@@ -670,11 +674,13 @@ textarea {
 }
 
 #message-input {
-  max-height: 150px;
+  max-height: 120px;
   background: var(--surface);
   border-color: var(--line);
   padding: 12px 16px;
   font-size: 0.95rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .compose-footer {

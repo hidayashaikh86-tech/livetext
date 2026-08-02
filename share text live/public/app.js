@@ -64,6 +64,7 @@ let toastTimer;
 let roomSwitchInProgress = false;
 let replyingToMessage = null;
 let pinnedMessageId = null;
+let roomCryptoKey = null;
 
 // Helpers for scrolling
 function scrollToBottom() {
@@ -83,7 +84,78 @@ if (window.visualViewport) {
   });
 }
 
-function connect() {
+async function setupCryptoKey() {
+  const hash = window.location.hash.slice(1);
+  const hashParams = new URLSearchParams(hash);
+  let keyBase64 = hashParams.get('key');
+
+  if (!keyBase64) {
+    const key = await window.crypto.subtle.generateKey(
+      { name: "AES-GCM", length: 256 },
+      true,
+      ["encrypt", "decrypt"]
+    );
+    const exported = await window.crypto.subtle.exportKey("raw", key);
+    keyBase64 = btoa(String.fromCharCode(...new Uint8Array(exported)));
+    
+    hashParams.set('key', keyBase64);
+    window.history.replaceState(null, '', '#' + hashParams.toString());
+  }
+
+  const rawKey = new Uint8Array(atob(keyBase64).split('').map(c => c.charCodeAt(0)));
+  roomCryptoKey = await window.crypto.subtle.importKey(
+    "raw",
+    rawKey,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function encryptText(plainText) {
+  if (!plainText) return plainText;
+  if (!roomCryptoKey) return plainText;
+  try {
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(plainText);
+    const ciphertext = await window.crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: iv },
+      roomCryptoKey,
+      encoded
+    );
+    const ivBase64 = btoa(String.fromCharCode(...iv));
+    const cipherBase64 = btoa(String.fromCharCode(...new Uint8Array(ciphertext)));
+    return `${ivBase64}:${cipherBase64}`;
+  } catch (e) {
+    console.error("Encryption failed", e);
+    return plainText; 
+  }
+}
+
+async function decryptText(encryptedPayload) {
+  if (!encryptedPayload) return encryptedPayload;
+  if (!roomCryptoKey) return "🔒 Encrypted Message";
+  if (!encryptedPayload.includes(':')) return encryptedPayload;
+
+  try {
+    const [ivBase64, cipherBase64] = encryptedPayload.split(':');
+    const iv = new Uint8Array(atob(ivBase64).split('').map(c => c.charCodeAt(0)));
+    const ciphertext = new Uint8Array(atob(cipherBase64).split('').map(c => c.charCodeAt(0)));
+    
+    const decrypted = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv },
+      roomCryptoKey,
+      ciphertext
+    );
+    return new TextDecoder().decode(decrypted);
+  } catch (e) {
+    console.error("Decryption failed", e);
+    return "🔒 Encrypted Message";
+  }
+}
+
+async function connect() {
+  await setupCryptoKey();
   updateRoomUi();
 
   if (location.protocol === "file:") {
@@ -105,9 +177,16 @@ function connect() {
     setConnection("Connected live", "online");
   });
 
-  socket.addEventListener("message", (event) => {
+  socket.addEventListener("message", async (event) => {
     const payload = JSON.parse(event.data);
     const isAtBottom = boardScrollArea ? (boardScrollArea.scrollHeight - boardScrollArea.scrollTop - boardScrollArea.clientHeight < 100) : false;
+
+    if (payload.messages) {
+      await Promise.all(payload.messages.map(async m => { m.text = await decryptText(m.text); }));
+    }
+    if (payload.drafts) {
+      await Promise.all(payload.drafts.map(async d => { d.text = await decryptText(d.text); }));
+    }
 
     if (payload.type === "hello") {
       clientId = payload.clientId;
@@ -189,7 +268,11 @@ function getRoomUrl(roomId = currentRoomId) {
     url.searchParams.set("room", roomId);
   }
 
-  url.hash = "";
+  if (roomId === currentRoomId) {
+    url.hash = window.location.hash;
+  } else {
+    url.hash = "";
+  }
   return url.toString();
 }
 
@@ -502,11 +585,13 @@ function renderMessages() {
       editInput.value = message.text;
     });
 
-    editForm.addEventListener("submit", (event) => {
+    editForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const nextText = editInput.value.trim();
       if (!nextText) return;
-      send({ type: "update", id: message.id, text: nextText });
+      
+      const encryptedText = await encryptText(nextText);
+      send({ type: "update", id: message.id, text: encryptedText });
     });
 
     deleteButton.addEventListener("click", () => {
@@ -575,10 +660,11 @@ function updateOwnLivePreview() {
   }
 }
 
-function sendTypingSoon() {
+async function sendTypingSoon() {
   clearTimeout(typingTimer);
-  typingTimer = setTimeout(() => {
-    send({ type: "typing", text: messageInput.value });
+  const text = messageInput.value;
+  typingTimer = setTimeout(async () => {
+    send({ type: "typing", text: await encryptText(text) });
   }, 120);
 }
 
@@ -787,13 +873,14 @@ messageInput.addEventListener("keydown", (event) => {
 
 window.addEventListener("beforeunload", saveDraft);
 
-messageForm.addEventListener("submit", (event) => {
+messageForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const text = messageInput.value.trim();
   if (!text) return;
 
-  const payload = { type: "create", text, expiresInMs: Number(expirySelect.value) };
+  const encryptedText = await encryptText(text);
+  const payload = { type: "create", text: encryptedText, expiresInMs: Number(expirySelect.value) };
   if (replyingToMessage) {
     payload.replyTo = replyingToMessage.id;
   }
