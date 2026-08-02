@@ -145,6 +145,7 @@ function broadcastTyping(room) {
 function tryParseFrame(buffer) {
   if (buffer.length < 2) return null;
 
+  const fin = (buffer[0] & 0x80) === 0x80;
   const opcode = buffer[0] & 0x0f;
   let length = buffer[1] & 0x7f;
   let offset = 2;
@@ -183,12 +184,8 @@ function tryParseFrame(buffer) {
   let frame = null;
   if (opcode === 8) {
     frame = { type: "close" };
-  } else if (opcode === 1) {
-    try {
-      frame = { type: "message", data: JSON.parse(payload.toString("utf8")) };
-    } catch {
-      frame = { type: "invalid" };
-    }
+  } else if (opcode === 1 || opcode === 2 || opcode === 0) {
+    frame = { type: "data", opcode, payload, fin };
   } else {
     frame = { type: "ignore" };
   }
@@ -298,7 +295,7 @@ function handleClientAction(client, action) {
         id: client.id,
         authorName: client.name,
         authorColor: client.color,
-        text: text.slice(0, 280),
+        text: text,
         updatedAt: Date.now()
       });
     }
@@ -422,7 +419,8 @@ server.on("upgrade", (req, socket) => {
     socket,
     roomId: room.id,
     name: `Guest ${String(clients.size + 1).padStart(2, "0")}`,
-    color: `hsl(${Math.floor(Math.random() * 360)} 70% 45%)`
+    color: `hsl(${Math.floor(Math.random() * 360)} 70% 45%)`,
+    messageBuffer: []
   };
 
   clients.set(id, client);
@@ -454,8 +452,18 @@ server.on("upgrade", (req, socket) => {
         return;
       }
 
-      if (parsed.frame.type === "message") {
-        handleClientAction(client, parsed.frame.data);
+      if (parsed.frame.type === "data") {
+        client.messageBuffer.push(parsed.frame.payload);
+        if (parsed.frame.fin) {
+          const fullMessage = Buffer.concat(client.messageBuffer);
+          client.messageBuffer = [];
+          try {
+            const data = JSON.parse(fullMessage.toString("utf8"));
+            handleClientAction(client, data);
+          } catch {
+            // Invalid JSON, drop it
+          }
+        }
       }
     }
   });
