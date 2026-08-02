@@ -230,7 +230,7 @@ async function connect() {
   socket.addEventListener("open", () => {
     isConnected = true;
     updateSendState();
-    setConnection("Connected live", "online");
+    setConnection("Connected live. Syncing...", "waiting");
   });
 
   socket.addEventListener("message", async (event) => {
@@ -248,6 +248,7 @@ async function connect() {
     }
 
     if (payload.type === "hello") {
+      setConnection("Connected live", "online");
       clientId = payload.clientId;
       currentRoomId = payload.roomId || currentRoomId;
       updateRoomUi();
