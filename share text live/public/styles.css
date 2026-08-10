@@ -628,24 +628,15 @@ textarea {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--line);
-  padding: 16px 20px;
+  padding: 12px 20px 20px 20px;
   z-index: 10;
 }
 
-.composer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  max-width: 860px;
-  margin-left: auto;
-  margin-right: auto;
+.hidden {
+  display: none !important;
 }
 
-.draft-status {
-  font-size: 0.75rem;
-  color: var(--muted);
-}
+
 
 .live-preview {
   max-width: 860px;
@@ -1200,4 +1191,26 @@ textarea {
   padding: 2px 4px;
   border-radius: 4px;
   font-size: 0.9em;
+}
+
+/* SEO Footer */
+.workspace-footer {
+  margin: 20px 24px;
+  padding: 24px;
+  background-color: var(--surface);
+  border: 1px solid var(--surface-soft);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.workspace-footer strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.workspace-footer .seo-tags {
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  opacity: 0.7;
 }

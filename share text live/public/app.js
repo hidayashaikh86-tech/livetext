@@ -23,7 +23,7 @@ const roomLabel = document.querySelector("#room-label");
 const roomChip = document.querySelector("#room-chip");
 const livePreview = document.querySelector("#live-preview");
 const livePreviewText = livePreview.querySelector("p:last-child");
-const draftStatus = document.querySelector("#draft-status");
+const draftStatus = document.querySelector("#draft-status") || {};
 const toast = document.querySelector("#toast");
 const template = document.querySelector("#message-template");
 
@@ -594,7 +594,7 @@ function renderMessages() {
     return;
   }
 
-  for (const message of messages.slice().reverse()) {
+  for (const message of messages) {
     const node = template.content.firstElementChild.cloneNode(true);
     const avatar = node.querySelector(".avatar");
     const author = node.querySelector(".author");
