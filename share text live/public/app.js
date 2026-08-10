@@ -552,8 +552,14 @@ function formatRemaining(ms) {
   if (seconds < 60) return `${seconds}s left`;
 
   const minutes = Math.floor(seconds / 60);
-  const nextSeconds = seconds % 60;
-  return nextSeconds ? `${minutes}m ${nextSeconds}s left` : `${minutes}m left`;
+  if (minutes < 60) {
+    const nextSeconds = seconds % 60;
+    return nextSeconds ? `${minutes}m ${nextSeconds}s left` : `${minutes}m left`;
+  }
+  
+  const hours = Math.floor(minutes / 60);
+  const nextMinutes = minutes % 60;
+  return nextMinutes ? `${hours}h ${nextMinutes}m left` : `${hours}h left`;
 }
 
 function nowFromServerClock() {

@@ -279,7 +279,7 @@ function handleClientAction(client, action) {
       replyTo: action.replyTo ? String(action.replyTo).slice(0, 36) : null,
       createdAt,
       updatedAt: createdAt,
-      expiresAt: expiresInMs === 0 ? null : createdAt + expiresInMs
+      expiresAt: expiresInMs === 0 ? createdAt + 6 * 60 * 60 * 1000 : createdAt + expiresInMs
     };
 
     room.messages.push(message);
@@ -363,6 +363,12 @@ function handleClientAction(client, action) {
 function serveFile(req, res) {
   const pathname = (req.url || "/").split("?")[0] || "/";
   const requestedPath = pathname === "/" ? "/index.html" : pathname;
+
+  if (requestedPath === "/health" || requestedPath === "/ping") {
+    res.writeHead(200, { "Content-Type": mimeTypes[".txt"] });
+    res.end("OK");
+    return;
+  }
 
   if (requestedPath === "/robots.txt") {
     const origin = requestOrigin(req);
