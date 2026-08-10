@@ -1308,3 +1308,15 @@ if (savedExpiry && [...expirySelect.options].some((option) => option.value === s
 
 connect();
 setInterval(updateCountdowns, 1000);
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      }, (err) => {
+        console.log('ServiceWorker registration failed: ', err);
+      });
+  });
+}
