@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shareli-cache-v1';
+const CACHE_NAME = 'shareli-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -41,7 +41,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event: Serve from cache, fallback to network
+// Fetch Event: Network-first for HTML, Cache-first for assets
 self.addEventListener('fetch', (event) => {
   // We only want to cache GET requests
   if (event.request.method !== 'GET') {
@@ -53,36 +53,52 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network-First strategy for HTML pages (navigation)
+  if (event.request.mode === 'navigate' || (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))) {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        // Cache the latest version
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
+        });
+        return response;
+      }).catch(() => {
+        // Fallback to cache if network fails
+        return caches.match(event.request).then((cachedResponse) => {
+          return cachedResponse || caches.match('/index.html');
+        });
+      })
+    );
+    return;
+  }
+
+  // Cache-First strategy for other static assets (CSS, JS, Images)
   event.respondWith(
     caches.match(event.request).then((response) => {
       // Cache hit - return response
       if (response) {
+        // Stale-while-revalidate for assets: return cache, but update it in the background
+        fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, networkResponse.clone());
+            });
+          }
+        }).catch(() => {}); // Ignore background fetch errors
         return response;
       }
 
-      // Clone the request because it's a one-time use stream
-      const fetchRequest = event.request.clone();
-
-      return fetch(fetchRequest).then((response) => {
-        // Check if we received a valid response
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
+      // Not in cache, fetch from network
+      return fetch(event.request).then((networkResponse) => {
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          return networkResponse;
         }
-
-        // Clone the response because it's a one-time use stream
-        const responseToCache = response.clone();
-
+        const responseToCache = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, responseToCache);
         });
-
-        return response;
-      }).catch(() => {
-        // Fallback for offline if the request fails (e.g. index.html)
-        // If it's a navigation request, we can serve index.html
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
-        }
+        return networkResponse;
       });
     })
   );
