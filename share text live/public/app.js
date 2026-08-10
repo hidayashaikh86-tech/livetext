@@ -1009,14 +1009,36 @@ document.addEventListener("paste", async (e) => {
   }
 });
 
+const dragOverlay = document.getElementById("drag-overlay");
+
+document.addEventListener("dragenter", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.dataTransfer.types && e.dataTransfer.types.includes("Files")) {
+    if (dragOverlay) dragOverlay.classList.remove("hidden");
+  }
+});
+
 document.addEventListener("dragover", (e) => {
   e.preventDefault();
   e.stopPropagation();
+  if (e.dataTransfer.types && e.dataTransfer.types.includes("Files")) {
+    e.dataTransfer.dropEffect = 'copy';
+  }
+});
+
+document.addEventListener("dragleave", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (dragOverlay && e.relatedTarget === null) {
+    dragOverlay.classList.add("hidden");
+  }
 });
 
 document.addEventListener("drop", async (e) => {
   e.preventDefault();
   e.stopPropagation();
+  if (dragOverlay) dragOverlay.classList.add("hidden");
   if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
     await processFile(e.dataTransfer.files[0]);
   }

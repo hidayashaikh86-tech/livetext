@@ -260,7 +260,28 @@
           </form>
         </section>
       </section>
+
+      <!-- Drag and Drop Overlay -->
+      <div id="drag-overlay" class="drag-overlay hidden">
+        <div class="drag-content">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <h2>Drop file here to upload</h2>
+        </div>
+      </div>
     </main>
+
+    <!-- QR Code Modal -->
+    <div id="qr-modal" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal-content" style="text-align: center; max-width: 300px; padding: 24px;">
+        <h3 style="margin-top: 0; margin-bottom: 16px;">Scan to Join</h3>
+        <div id="qrcode-container" style="display: flex; justify-content: center; background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;"></div>
+        <button id="close-qr-modal" class="btn-primary" style="width: 100%;">Close</button>
+      </div>
+    </div>
 
     <!-- Overlay for mobile sidebar -->
     <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
