@@ -1194,21 +1194,20 @@ textarea {
 }
 
 /* SEO Footer */
-.workspace-footer {
-  margin: 20px 24px;
-  padding: 24px;
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px;
   background-color: var(--surface);
-  border: 1px solid var(--surface-soft);
-  border-radius: 12px;
+  border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 0.85rem;
-  line-height: 1.5;
+  font-size: 0.75rem;
+  line-height: 1.4;
 }
-.workspace-footer strong {
+.sidebar-footer strong {
   color: var(--text);
   font-weight: 600;
 }
-.workspace-footer .seo-tags {
+.sidebar-footer .seo-tags {
   margin-top: 12px;
   font-size: 0.75rem;
   color: var(--muted);
