@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shareli-cache-v2';
+const CACHE_NAME = 'shareli-cache-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -8,7 +8,10 @@ const ASSETS_TO_CACHE = [
   '/logo.jpg',
   '/faq.html',
   '/privacy.html',
-  '/terms.html'
+  '/terms.html',
+  '/about.html',
+  '/contact.html',
+  '/blog.html'
 ];
 
 // Install Event: Cache all static assets
