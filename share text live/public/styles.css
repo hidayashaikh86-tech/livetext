@@ -202,22 +202,12 @@ textarea {
   gap: 12px;
 }
 
-.brand-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.brand-logo {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #a855f7);
+  border-radius: 8px;
+  object-fit: cover;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-}
-
-.brand-mark span {
-  width: 12px;
-  height: 12px;
-  border: 2.5px solid #fff;
-  border-radius: 50%;
 }
 
 .sidebar-divider {
@@ -505,6 +495,9 @@ textarea {
 
 .message-options-menu {
   position: relative;
+  display: flex;
+  gap: 4px;
+  align-items: center;
 }
 
 .msg-dropdown {

@@ -604,6 +604,8 @@ function renderMessages() {
     const editForm = node.querySelector(".edit-form");
     const editInput = editForm.querySelector("textarea");
     const copyButton = node.querySelector(".copy-message");
+    const quickCopyBtn = node.querySelector(".quick-copy-btn");
+    const quickDownloadBtn = node.querySelector(".quick-download-btn");
     const editButton = node.querySelector(".edit-message");
     const cancelButton = node.querySelector(".cancel-edit");
     const deleteButton = node.querySelector(".delete-message");
@@ -670,11 +672,17 @@ function renderMessages() {
       text.textContent = messageContent;
     }
     
+    if (messageContent.trim().length > 0) {
+      quickCopyBtn.classList.remove("hidden");
+    }
+
+    
     editInput.value = messageContent;
     expiresLabel.textContent = message.expiresAt ? "..." : "Keep";
 
     const attachmentContainer = node.querySelector(".message-attachment-container");
     if (attachmentData) {
+      quickDownloadBtn.classList.remove("hidden");
       attachmentContainer.classList.remove("hidden");
       attachmentContainer.innerHTML = '';
       
@@ -762,6 +770,21 @@ function renderMessages() {
       copyText(formatMessageForCopy(message), copyButton);
       dropdown.classList.add('hidden');
     });
+
+    if (quickCopyBtn) {
+      quickCopyBtn.addEventListener("click", () => {
+        copyText(formatMessageForCopy(message), quickCopyBtn);
+      });
+    }
+
+    if (quickDownloadBtn) {
+      quickDownloadBtn.addEventListener("click", () => {
+        const a = document.createElement("a");
+        a.href = attachmentData.data;
+        a.download = attachmentData.name;
+        a.click();
+      });
+    }
 
     editButton.addEventListener("click", () => {
       editForm.hidden = false;
