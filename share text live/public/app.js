@@ -653,8 +653,8 @@ function renderMessages() {
     }
 
     timestamp.textContent = message.updatedAt !== message.createdAt
-      ? `Edited ${formatTime(message.updatedAt)}`
-      : `${formatTime(message.createdAt)}`;
+      ? `Edited by ${message.editorName || 'someone'} at ${formatTime(message.updatedAt)}`
+      : formatTime(message.createdAt);
       
     let messageContent = message.text || "";
     let attachmentData = null;
