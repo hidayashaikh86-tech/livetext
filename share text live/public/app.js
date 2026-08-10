@@ -26,6 +26,10 @@ const livePreviewText = livePreview.querySelector("p:last-child");
 const draftStatus = document.querySelector("#draft-status") || {};
 const toast = document.querySelector("#toast");
 const template = document.querySelector("#message-template");
+const showQrBtn = document.querySelector("#show-qr-btn");
+const qrModal = document.querySelector("#qr-modal");
+const closeQrModal = document.querySelector("#close-qr-modal");
+const qrcodeContainer = document.querySelector("#qrcode-container");
 
 // New elements for UI overhaul
 const sidebar = document.getElementById("sidebar");
@@ -1065,6 +1069,27 @@ saveNameButton.addEventListener("click", () => {
 copyLinkButton.addEventListener("click", async () => {
   copyText(roomLink.value, copyLinkButton);
 });
+
+if (showQrBtn) {
+  showQrBtn.addEventListener("click", () => {
+    qrcodeContainer.innerHTML = "";
+    new QRCode(qrcodeContainer, {
+      text: roomLink.value || window.location.href,
+      width: 200,
+      height: 200,
+      colorDark : "#0d0d12",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.M
+    });
+    qrModal.classList.remove("hidden");
+  });
+}
+
+if (closeQrModal) {
+  closeQrModal.addEventListener("click", () => {
+    qrModal.classList.add("hidden");
+  });
+}
 
 if (copyAllButton) {
   copyAllButton.addEventListener("click", () => {

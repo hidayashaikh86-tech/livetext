@@ -60,6 +60,9 @@
     <!-- Highlight.js for code syntax highlighting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     
+    <!-- QRCode.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
     <link rel="stylesheet" href="styles.css" />
     
     <!-- App Icons -->
@@ -94,7 +97,15 @@
           <label class="field-label" for="room-link">Room link</label>
           <div class="invite-row">
             <input id="room-link" type="text" readonly />
-            <button id="copy-link" type="button" class="btn-primary" data-default-label="Copy">Copy</button>
+            <button id="copy-link" type="button" class="btn-primary" data-default-label="Copy" style="flex-shrink: 0;">Copy</button>
+            <button id="show-qr-btn" type="button" class="btn-primary" aria-label="Show QR Code" title="Show QR Code" style="flex-shrink: 0; padding: 0 10px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+            </button>
           </div>
           <div class="room-actions">
             <button id="new-room" class="secondary-action" type="button" data-default-label="New private">New private</button>
