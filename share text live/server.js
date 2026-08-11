@@ -370,27 +370,6 @@ function serveFile(req, res) {
     return;
   }
 
-  if (requestedPath === "/robots.txt") {
-    const origin = requestOrigin(req);
-    res.writeHead(200, { "Content-Type": mimeTypes[".txt"] });
-    res.end(["User-agent: *", "Allow: /", `Sitemap: ${origin}/sitemap.xml`, ""].join("\n"));
-    return;
-  }
-
-  if (requestedPath === "/sitemap.xml") {
-    const origin = requestOrigin(req);
-    res.writeHead(200, { "Content-Type": mimeTypes[".xml"] });
-    res.end(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${origin}/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-</urlset>
-`);
-    return;
-  }
 
   const safePath = path.normalize(decodeURIComponent(requestedPath)).replace(/^(\.\.[/\\])+/, "");
   const filePath = path.join(PUBLIC_DIR, safePath);
