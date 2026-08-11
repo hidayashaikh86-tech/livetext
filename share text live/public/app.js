@@ -166,6 +166,11 @@ async function setupCryptoKey() {
   // If the room is password-protected and no raw key is embedded, prompt for password
   if (isPasswordProtected && !keyBase64) {
     const password = await promptForPassword();
+    if (password === null) {
+      // User cancelled joining, redirect to public room
+      window.location.href = "/";
+      return;
+    }
     if (password) {
       roomCryptoKey = await deriveKeyFromPassword(password, currentRoomId);
     }
@@ -206,13 +211,14 @@ function promptForPassword() {
     if (pwModalDesc) pwModalDesc.textContent = "This room is password-protected. Enter the password shared by the room creator to read messages.";
     if (pwModalLabel) pwModalLabel.textContent = "Password";
     if (pwConfirm) pwConfirm.textContent = "Unlock Room";
+    if (pwCancel) pwCancel.textContent = "Return to Public";
     pwInput.placeholder = "Enter room password…";
     pwInput.value = "";
     pwInput.type = "password";
     if (pwEyeIcon) pwEyeIcon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
 
-    // Hide Cancel — user must enter the password to proceed
-    if (pwCancel) pwCancel.style.display = "none";
+    // Make sure Cancel is visible
+    if (pwCancel) pwCancel.style.display = "";
 
     pwModal.classList.remove("hidden");
     pwModal.setAttribute("aria-hidden", "false");
@@ -222,11 +228,17 @@ function promptForPassword() {
       cleanup();
       resolve(pw);
     };
+    
+    const onCancel = () => {
+      cleanup();
+      resolve(null); // return null to indicate cancellation
+    };
 
     const onKeydown = (e) => { if (e.key === "Enter") onConfirm(); };
 
     function cleanup() {
       pwConfirm.removeEventListener("click", onConfirm);
+      pwCancel.removeEventListener("click", onCancel);
       pwInput.removeEventListener("keydown", onKeydown);
       pwModal.classList.add("hidden");
       pwModal.setAttribute("aria-hidden", "true");
@@ -235,11 +247,12 @@ function promptForPassword() {
       if (pwModalDesc) pwModalDesc.textContent = "Optionally add a password. Anyone with the correct password can decrypt messages — the server never sees it.";
       if (pwModalLabel) pwModalLabel.textContent = "Password (optional)";
       if (pwConfirm) pwConfirm.textContent = "Create Room";
+      if (pwCancel) pwCancel.textContent = "Cancel";
       pwInput.placeholder = "Leave blank for random key…";
-      if (pwCancel) pwCancel.style.display = "";
     }
 
     pwConfirm.addEventListener("click", onConfirm);
+    pwCancel.addEventListener("click", onCancel);
     pwInput.addEventListener("keydown", onKeydown);
     setTimeout(() => pwInput.focus(), 50);
   });
