@@ -93,6 +93,8 @@ let typingDrafts = [];
 let reconnectTimer;
 let typingTimer;
 let serverOffset = 0;
+let myColor = "#6366f1"; // updated from server hello
+const pendingMessages = new Map(); // pendingId → tempMessage, for reliable matching
 let currentRoomId = getRoomIdFromUrl();
 let intentionalDisconnect = false;
 let isConnected = false;
@@ -360,6 +362,7 @@ async function connect(options = {}) {
     if (payload.type === "hello") {
       setConnection("Connected live", "online");
       clientId = payload.clientId;
+      myColor = payload.users?.find(u => u.id === payload.clientId)?.color || "#6366f1";
       currentRoomId = payload.roomId || currentRoomId;
       updateRoomUi();
       nameInput.value = localStorage.getItem("shareTextLiveName") || payload.name;
@@ -390,13 +393,19 @@ async function connect(options = {}) {
     }
     
     if (payload.type === "newMessage") {
-      // If we have a pending message that matches, replace it
-      const pendingIdx = messages.findIndex(m => m.isPending && m.text === payload.message.text && m.authorId === clientId);
-      if (pendingIdx !== -1) {
-        messages[pendingIdx] = payload.message;
-      } else {
-        messages.push(payload.message);
+      // Match by pendingId first (fast + reliable, works for huge images too)
+      let matched = false;
+      for (const [pendingId, tmp] of pendingMessages.entries()) {
+        if (tmp.authorId === clientId) {
+          pendingMessages.delete(pendingId);
+          const idx = messages.findIndex(m => m.id === tmp.id);
+          if (idx !== -1) messages[idx] = payload.message;
+          else messages.push(payload.message);
+          matched = true;
+          break;
+        }
       }
+      if (!matched) messages.push(payload.message);
       renderMessages();
       if (isAtBottom) scrollToBottom();
     }
@@ -746,8 +755,20 @@ function renderMessages() {
     node.dataset.expiresAt = message.expiresAt || "";
     
     if (message.isPending) {
-      node.style.opacity = "0.5";
+      node.style.opacity = "0.55";
       node.style.pointerEvents = "none";
+      node.title = "Sending…";
+    }
+    if (message.isFailed) {
+      node.style.opacity = "0.75";
+      node.style.outline = "1.5px solid #ef4444";
+      node.style.borderRadius = "10px";
+      node.title = "Failed to send";
+      // Add a small retry indicator
+      const failBadge = document.createElement("div");
+      failBadge.style.cssText = "font-size:0.72rem;color:#ef4444;margin-top:4px;cursor:default;";
+      failBadge.textContent = "⚠️ Not delivered — check your connection";
+      node.querySelector(".message-text")?.after(failBadge);
     }
     author.textContent = message.authorName || "Guest";
     
@@ -1488,20 +1509,33 @@ messageForm.addEventListener("submit", async (event) => {
 
   // ✅ Send succeeded — show optimistic (pending) message immediately
   const now = Date.now();
+  const pendingId = "temp-" + now + "-" + Math.random().toString(36).slice(2);
   const tempMessage = {
-    id: "temp-" + now,
-    text: payloadData,                       // raw unencrypted text (rendered locally)
+    id: pendingId,
+    text: payloadData,           // raw unencrypted (rendered locally only)
     authorId: clientId,
     authorName: nameInput.value || localStorage.getItem("shareTextLiveName") || "You",
-    authorColor: "#6366f1",
+    authorColor: myColor,        // use real color synced from server
     replyTo: replyingToMessage ? replyingToMessage.id : null,
     createdAt: now,
-    updatedAt: now,                          // ← fixes the RangeError crash
+    updatedAt: now,
     expiresAt: Number(expirySelect.value) ? now + Number(expirySelect.value) : now + (6 * 60 * 60 * 1000),
     isPending: true
   };
+  pendingMessages.set(pendingId, tempMessage);
   messages.push(tempMessage);
   renderMessages();
+
+  // Timeout: if server doesn't confirm within 10s, mark as failed
+  setTimeout(() => {
+    if (!pendingMessages.has(pendingId)) return; // already confirmed
+    pendingMessages.delete(pendingId);
+    const idx = messages.findIndex(m => m.id === pendingId);
+    if (idx !== -1) {
+      messages[idx] = { ...tempMessage, isFailed: true };
+      renderMessages();
+    }
+  }, 10000);
 
   // Reset UI immediately — user can type the next message
   messageInput.value = "";
