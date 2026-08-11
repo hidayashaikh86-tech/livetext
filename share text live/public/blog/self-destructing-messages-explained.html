@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="What are self-destructing messages? Learn how timed, ephemeral messages work, why they improve privacy, and how to send one for free using Shareli." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://shareli.online/blog/self-destructing-messages-explained.html" />
+  <meta property="og:title" content="What Are Self-Destructing Messages? How They Work & Why They Matter" />
+  <meta property="og:description" content="Self-destructing messages delete themselves automatically after a timer. Learn how they work, when to use them, and how to send one instantly with Shareli." />
+  <meta property="og:url" content="https://shareli.online/blog/self-destructing-messages-explained.html" />
+  <meta property="og:type" content="article" />
+  <title>What Are Self-Destructing Messages? How They Work & Why They Matter | Shareli</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .page-wrap { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+    .page-nav a { color: var(--muted); text-decoration: none; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 48px; }
+    .page-nav a:hover { color: var(--ink); }
+    .post-meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 16px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .post-tag { background: var(--accent-soft); color: var(--accent-strong); border-radius: 6px; padding: 2px 8px; font-weight: 500; }
+    h1 { font-size: clamp(1.7rem, 5vw, 2.3rem); font-weight: 800; line-height: 1.2; margin-bottom: 20px; color: var(--ink); }
+    .lead { font-size: 1.1rem; line-height: 1.75; color: var(--muted); margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--line); }
+    h2 { font-size: 1.2rem; font-weight: 700; color: var(--ink); margin: 36px 0 12px; }
+    p { line-height: 1.8; color: var(--muted); margin-bottom: 16px; font-size: 0.97rem; }
+    ol, ul { padding-left: 22px; margin-bottom: 16px; }
+    li { line-height: 1.75; color: var(--muted); margin-bottom: 8px; font-size: 0.97rem; }
+    strong { color: var(--ink); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .cta-box { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 14px; padding: 28px; margin: 40px 0; text-align: center; }
+    .cta-box p { color: var(--ink); font-weight: 600; margin-bottom: 12px; }
+    .cta-box a { background: var(--accent); color: #fff; padding: 10px 24px; border-radius: 8px; font-weight: 600; display: inline-block; }
+    .page-footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; }
+    .page-footer a { color: var(--muted); text-decoration: none; }
+    .page-footer a:hover { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <main class="page-wrap">
+    <nav class="page-nav">
+      <a href="/blog.html">← Shareli Blog</a>
+    </nav>
+
+    <div class="post-meta">
+      <span>August 2026</span>
+      <span class="post-tag">Privacy</span>
+      <span class="post-tag">Security</span>
+    </div>
+
+    <h1>What Are Self-Destructing Messages? How They Work &amp; Why They Matter</h1>
+
+    <p class="lead">A self-destructing message is a piece of content — text, file, image — that automatically and permanently deletes itself after a set amount of time. Once it is gone, it is gone forever. No copy on a server, no backup, no archive. Here is everything you need to know about how they work and when to use them.</p>
+
+    <h2>The Basic Concept</h2>
+    <p>Traditional messages (emails, SMS, WhatsApp texts) are stored on servers permanently, or at least for a very long time. Even after you delete a message from your phone, a copy often remains on the service's servers. This creates a permanent record of communication that could be accessed later — by hackers, by companies, or by legal subpoenas.</p>
+    <p>Self-destructing messages solve this by design. A timer is set when the message is created. When the timer reaches zero, the message is wiped from the server. There is no archive, no recovery mechanism, and no forensic trace.</p>
+
+    <h2>How Self-Destructing Messages Work Technically</h2>
+    <p>In a simple implementation, the message is stored in server memory (RAM) with a timestamp. A background process regularly checks all stored messages and deletes any that have passed their expiry time. Since RAM is volatile memory (not a hard drive), the deleted data cannot be recovered with standard data recovery tools.</p>
+    <p>In a more secure implementation (like Shareli), the message is also <strong>end-to-end encrypted</strong>. This means even during its brief storage window, the server cannot read the content. When the deletion happens, the encrypted blob is simply removed from memory — with no database record ever created in the first place.</p>
+
+    <h2>Why Self-Destructing Messages Improve Privacy</h2>
+    <p>The privacy benefits are significant:</p>
+    <ul>
+      <li><strong>No permanent record</strong> — Your communication does not create a long-term digital paper trail.</li>
+      <li><strong>Reduced attack surface</strong> — Hackers cannot steal data that no longer exists. A breach of Shareli's server after a message expires yields nothing.</li>
+      <li><strong>Legal protection</strong> — In jurisdictions where companies can be legally compelled to hand over stored data, ephemeral messages provide a natural protection because the data is already gone.</li>
+      <li><strong>Accidental exposure prevention</strong> — Passwords, API keys, and private notes sent to the wrong person expire before serious damage can be done.</li>
+    </ul>
+
+    <h2>When Should You Use Self-Destructing Messages?</h2>
+    <p>Self-destructing messages are ideal in these situations:</p>
+    <ul>
+      <li>Sharing a one-time password, PIN, or temporary access code with someone.</li>
+      <li>Sending API keys, database credentials, or other secrets to a colleague.</li>
+      <li>Transferring sensitive documents that should not linger on cloud servers.</li>
+      <li>Temporary team announcements or meeting notes that only need to exist during the meeting.</li>
+      <li>Any situation where you want to share information once without it becoming a permanent record.</li>
+    </ul>
+
+    <h2>Self-Destructing Messages vs. Disappearing Messages</h2>
+    <p>These terms are often used interchangeably, but there is a subtle difference. <strong>Disappearing messages</strong> (as seen in WhatsApp or Signal) hide the message from the conversation view after a set time, but a copy may still exist on device storage or backed up in the cloud. <strong>Self-destructing messages</strong> are deleted from the server entirely, not just hidden from view. Shareli uses true server-side deletion with no database backup — making it a genuine self-destruct implementation.</p>
+
+    <h2>How to Send a Self-Destructing Message on Shareli</h2>
+    <ol>
+      <li>Open <a href="/">shareli.online</a> and click <strong>"Create Private Room"</strong>.</li>
+      <li>Share the room link with your recipient.</li>
+      <li>Type your message and select a timer — 1 minute, 5 minutes, 30 minutes, 1 hour, or 6 hours.</li>
+      <li>Click Send. The message appears with a visible countdown timer.</li>
+      <li>When the timer hits zero, the message permanently deletes itself from the server with no trace.</li>
+    </ol>
+
+    <div class="cta-box">
+      <p>Try sending your first self-destructing message — it takes 30 seconds.</p>
+      <a href="/">Open Shareli →</a>
+    </div>
+
+    <footer class="page-footer">
+      <a href="/">Home</a>
+      <a href="/blog.html">Blog</a>
+      <a href="/about.html">About</a>
+      <a href="/faq.html">FAQ</a>
+      <a href="/privacy.html">Privacy</a>
+    </footer>
+  </main>
+</body>
+</html>

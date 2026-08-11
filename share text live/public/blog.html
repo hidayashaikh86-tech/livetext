@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Shareli Blog — Tips, guides, and insights on secure online text sharing, end-to-end encryption, and privacy-first tools for developers and teams." />
+    <meta name="description" content="Shareli Blog — Tips, guides, and insights on secure text sharing, online privacy, self-destructing messages, and anonymous file transfer." />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://shareli.online/blog.html" />
     <meta property="og:title" content="Shareli Blog — Secure Sharing Tips & Guides" />
@@ -19,27 +19,19 @@
     <style>
       .page-wrap { max-width: 780px; margin: 0 auto; padding: 48px 24px 80px; }
       .page-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 48px; font-size: 0.9rem; }
-      .page-nav a { color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
+      .page-nav a { color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 8px; }
       .page-nav a:hover { color: var(--ink); }
       .page-hero { margin-bottom: 48px; }
       .page-hero h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); font-weight: 800; line-height: 1.2; margin-bottom: 14px; color: var(--ink); }
       .page-hero p { font-size: 1.05rem; line-height: 1.7; color: var(--muted); }
-      .post-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px 32px; margin-bottom: 24px; transition: border-color 0.2s, transform 0.2s; }
+      .post-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px 32px; margin-bottom: 20px; transition: border-color 0.2s, transform 0.2s; display: block; text-decoration: none; }
       .post-card:hover { border-color: var(--accent); transform: translateY(-2px); }
       .post-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 10px; display: flex; gap: 12px; flex-wrap: wrap; }
       .post-tag { background: var(--accent-soft); color: var(--accent-strong); border-radius: 6px; padding: 2px 8px; font-weight: 500; }
-      .post-card h2 { font-size: 1.25rem; font-weight: 700; color: var(--ink); margin: 0 0 12px; line-height: 1.3; }
-      .post-card p { line-height: 1.7; color: var(--muted); margin: 0 0 16px; font-size: 0.95rem; }
-      .read-more { color: var(--accent); font-weight: 600; font-size: 0.9rem; text-decoration: none; }
-      .read-more:hover { text-decoration: underline; }
-      hr.divider { border: none; border-top: 1px solid var(--line); margin: 8px 0 32px; }
-      /* Inline article styles */
-      .article-body h2 { font-size: 1.2rem; font-weight: 700; color: var(--ink); margin: 28px 0 10px; }
-      .article-body p { line-height: 1.75; color: var(--muted); margin-bottom: 14px; font-size: 0.95rem; }
-      .article-body ul { padding-left: 20px; margin-bottom: 14px; }
-      .article-body li { line-height: 1.7; color: var(--muted); margin-bottom: 6px; }
-      .article-body a { color: var(--accent); text-decoration: none; }
-      .article-body a:hover { text-decoration: underline; }
+      .post-card h2 { font-size: 1.2rem; font-weight: 700; color: var(--ink); margin: 0 0 10px; line-height: 1.35; }
+      .post-card p { line-height: 1.7; color: var(--muted); margin: 0; font-size: 0.93rem; }
+      .read-more { display: inline-block; margin-top: 14px; color: var(--accent); font-weight: 600; font-size: 0.88rem; }
+      .section-title { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 40px 0 16px; }
       .page-footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; }
       .page-footer a { color: var(--muted); text-decoration: none; }
       .page-footer a:hover { color: var(--ink); }
@@ -59,91 +51,96 @@
         <p>Tips, guides, and insights on secure text sharing, online privacy, and building better workflows for developers and teams.</p>
       </div>
 
-      <!-- Article 1 -->
-      <article class="post-card" itemscope itemtype="https://schema.org/BlogPosting">
+      <p class="section-title">Latest Articles</p>
+
+      <a class="post-card" href="/blog/self-destructing-messages-explained.html">
         <div class="post-meta">
-          <span>August 10, 2026</span>
-          <span class="post-tag">Privacy</span>
-          <span class="post-tag">Guide</span>
-        </div>
-        <h2 itemprop="headline">How to Share Code Securely Between Devices Without an Account</h2>
-        <p itemprop="description">Copying a code snippet from your laptop to your phone used to mean emailing yourself or using a third-party clipboard service that stores your data. Shareli changes that. Here is how developers and students can instantly transfer code across devices using end-to-end encryption with zero data retention.</p>
-
-        <hr class="divider" />
-
-        <div class="article-body" itemprop="articleBody">
-          <h2>The Problem with Traditional Methods</h2>
-          <p>When you need to share a code snippet or API key from one device to another, most people resort to emailing themselves, using Google Keep, or pasting into WhatsApp. Each of these methods stores your content on third-party servers, potentially forever. For sensitive information like API keys, database credentials, or private notes, this is a real security risk.</p>
-
-          <h2>The Shareli Solution</h2>
-          <p>Shareli offers a better way. Here is how to transfer code from your laptop to your phone in under 30 seconds:</p>
-          <ul>
-            <li>Open <a href="/">shareli.online</a> on your laptop.</li>
-            <li>Click <strong>"Create Private Room"</strong> to generate a unique encrypted space.</li>
-            <li>Paste your code snippet into the message box and click Send.</li>
-            <li>Click the <strong>QR Code button</strong> in the sidebar.</li>
-            <li>Scan the QR code with your phone's camera — your phone instantly joins the room and sees the code.</li>
-          </ul>
-          <p>The entire process takes under 30 seconds. No account, no email, no storage. The code self-destructs based on the timer you set.</p>
-
-          <h2>Why This is More Secure</h2>
-          <p>Unlike email or Google Keep, Shareli encrypts your content using AES-GCM 256-bit encryption in your browser before it ever reaches the server. The encryption key is embedded in the URL — not stored on the server. This means even the Shareli server cannot read your code. When the timer expires, the message is deleted from server memory with no database record ever created.</p>
-        </div>
-      </article>
-
-      <!-- Article 2 -->
-      <article class="post-card" itemscope itemtype="https://schema.org/BlogPosting">
-        <div class="post-meta">
-          <span>August 8, 2026</span>
-          <span class="post-tag">Features</span>
-        </div>
-        <h2 itemprop="headline">5 Ways to Use Shareli You Might Not Know About</h2>
-        <p itemprop="description">Most people use Shareli as a clipboard. But there are at least 5 other powerful ways to use it — from classroom file drops to temporary team noticeboards.</p>
-
-        <hr class="divider" />
-
-        <div class="article-body" itemprop="articleBody">
-          <h2>1. Classroom File Drop</h2>
-          <p>Teachers and students can create a private Shareli room, share the QR code on a projector, and instantly distribute notes, code exercises, or links to the entire class. No learning management system needed.</p>
-
-          <h2>2. Cross-Device Clipboard</h2>
-          <p>Copy something on your phone and need it on your laptop immediately? Open Shareli on both devices in the public room, paste the text and send. It appears on your other device instantly. Much faster than AirDrop or Bluetooth.</p>
-
-          <h2>3. One-Time Secure Note</h2>
-          <p>Need to send a password or private key to a colleague? Send it through a Shareli private room with a 1-minute timer. Once they read it, it is gone. No email trail, no chat history.</p>
-
-          <h2>4. Temporary Team Noticeboard</h2>
-          <p>Create a private Shareli room for your team meeting. Pin important links or notes. Set a 1-hour timer. When the meeting is over, all the information disappears automatically, keeping your communication clean and secure.</p>
-
-          <h2>5. Anonymous Feedback Box</h2>
-          <p>Share a private room link with your team or class and ask them to drop anonymous feedback. Since Shareli does not track identities, responses are genuinely anonymous — no accounts, no IP logs.</p>
-        </div>
-      </article>
-
-      <!-- Article 3 -->
-      <article class="post-card" itemscope itemtype="https://schema.org/BlogPosting">
-        <div class="post-meta">
-          <span>August 5, 2026</span>
+          <span>August 2026</span>
           <span class="post-tag">Privacy</span>
           <span class="post-tag">Security</span>
         </div>
-        <h2 itemprop="headline">What is End-to-End Encryption and Why Does Shareli Use It?</h2>
-        <p itemprop="description">End-to-end encryption (E2EE) is one of the strongest privacy technologies available. Here is a plain-language explanation of what it means, how it works, and why Shareli chose it over simpler approaches.</p>
+        <h2>What Are Self-Destructing Messages? How They Work &amp; Why They Matter</h2>
+        <p>A self-destructing message permanently deletes itself after a set timer. Learn how they work technically, why they improve your privacy, and when to use them.</p>
+        <span class="read-more">Read article →</span>
+      </a>
 
-        <hr class="divider" />
-
-        <div class="article-body" itemprop="articleBody">
-          <h2>What is End-to-End Encryption?</h2>
-          <p>End-to-end encryption means that your data is encrypted on your device and can only be decrypted by the intended recipient. Nobody in between — not internet service providers, not the platform's server, not even the platform's developers — can read the content.</p>
-          <p>Think of it like a locked box. You lock the content with a key, send the locked box, and only the recipient who has the matching key can open it. Everyone else just sees a locked box.</p>
-
-          <h2>How Shareli Implements E2EE</h2>
-          <p>Shareli uses the <strong>WebCrypto API</strong> — a powerful encryption engine built into every modern browser. When you create a private room, the browser generates a unique AES-GCM 256-bit encryption key. This key is stored in your room URL (the part after the <code>#</code> symbol). When you send a message, it is encrypted in your browser using this key before it is sent to the server. The server stores only the encrypted blob — it has no access to the key and therefore no ability to read your message.</p>
-
-          <h2>Why This Matters for You</h2>
-          <p>Traditional messaging platforms store your messages in a database that they can technically read. Shareli cannot do this by design. Even in a worst-case scenario, the Shareli server could only provide encrypted data that is impossible to read without the room URL that only you shared with your recipient.</p>
+      <a class="post-card" href="/blog/share-code-snippets-online.html">
+        <div class="post-meta">
+          <span>August 2026</span>
+          <span class="post-tag">Developer</span>
+          <span class="post-tag">Code</span>
         </div>
-      </article>
+        <h2>How to Share Code Snippets Online Instantly — Free &amp; Secure</h2>
+        <p>Shareli supports syntax highlighting for 190+ languages. Share code with a colleague in seconds — no GitHub account, no Pastebin, no permanent storage of your proprietary code.</p>
+        <span class="read-more">Read article →</span>
+      </a>
+
+      <a class="post-card" href="/blog/online-clipboard-sync-devices.html">
+        <div class="post-meta">
+          <span>August 2026</span>
+          <span class="post-tag">Clipboard</span>
+          <span class="post-tag">Productivity</span>
+        </div>
+        <h2>Best Free Online Clipboard to Sync Text Across All Your Devices</h2>
+        <p>Copy on your phone, paste on your laptop. Shareli works on any combination of devices — iPhone, Android, Windows, Mac — with no account and no permanent storage.</p>
+        <span class="read-more">Read article →</span>
+      </a>
+
+      <a class="post-card" href="/blog/share-files-without-google-drive.html">
+        <div class="post-meta">
+          <span>August 2026</span>
+          <span class="post-tag">File Sharing</span>
+          <span class="post-tag">Privacy</span>
+        </div>
+        <h2>How to Share Files Without Google Drive, Dropbox, or Email</h2>
+        <p>Google Drive is great for long-term storage. But for a quick private file transfer right now, it is overkill. Here is the fastest alternative that requires zero accounts.</p>
+        <span class="read-more">Read article →</span>
+      </a>
+
+      <a class="post-card" href="/blog/transfer-text-phone-to-laptop.html">
+        <div class="post-meta">
+          <span>August 2026</span>
+          <span class="post-tag">Guide</span>
+          <span class="post-tag">Tips</span>
+        </div>
+        <h2>How to Transfer Text from Phone to Laptop Instantly (No Cable Required)</h2>
+        <p>Email yourself? AirDrop? Those are all clunky. There is a faster way to get any text from your phone to your laptop in under 10 seconds — with no apps and no accounts.</p>
+        <span class="read-more">Read article →</span>
+      </a>
+
+      <p class="section-title" style="margin-top: 48px;">From the Archives</p>
+
+      <a class="post-card" href="/blog/how-to-share-code-securely.html">
+        <div class="post-meta">
+          <span>August 2026</span>
+          <span class="post-tag">Security</span>
+          <span class="post-tag">Developer</span>
+        </div>
+        <h2>How to Share Code Securely Between Devices Without an Account</h2>
+        <p>Step-by-step guide to using Shareli's QR code feature to securely transfer code, API keys, or any text between devices using end-to-end encryption.</p>
+        <span class="read-more">Read article →</span>
+      </a>
+
+      <a class="post-card" href="/blog/5-ways-to-use-shareli.html">
+        <div class="post-meta">
+          <span>August 2026</span>
+          <span class="post-tag">Features</span>
+        </div>
+        <h2>5 Ways to Use Shareli You Might Not Know About</h2>
+        <p>Most people use Shareli as a clipboard. But there are at least 5 other powerful use cases — from classroom file drops to temporary team noticeboards.</p>
+        <span class="read-more">Read article →</span>
+      </a>
+
+      <a class="post-card" href="/blog/what-is-end-to-end-encryption.html">
+        <div class="post-meta">
+          <span>August 2026</span>
+          <span class="post-tag">Security</span>
+          <span class="post-tag">Privacy</span>
+        </div>
+        <h2>What is End-to-End Encryption and Why Does Shareli Use It?</h2>
+        <p>A plain-language explanation of E2EE — what it means, how AES-GCM encryption works in your browser, and why the Shareli server can never read your messages.</p>
+        <span class="read-more">Read article →</span>
+      </a>
 
       <footer class="page-footer">
         <a href="/">Home</a>
