@@ -168,14 +168,12 @@ async function setupCryptoKey() {
   // If the room is password-protected and no raw key is embedded, prompt for password
   if (isPasswordProtected && !keyBase64) {
     const password = await promptForPassword();
-    if (password === null) {
-      // User cancelled joining, redirect to public room
+    if (!password) {
+      // User cancelled or entered nothing — redirect to public room
       window.location.href = "/";
       return;
     }
-    if (password) {
-      roomCryptoKey = await deriveKeyFromPassword(password, currentRoomId);
-    }
+    roomCryptoKey = await deriveKeyFromPassword(password, currentRoomId);
     return;
   }
 
@@ -307,6 +305,12 @@ async function decryptText(encryptedPayload) {
 
   try {
     const [ivBase64, cipherBase64] = encryptedPayload.split(':');
+    
+    // AES-GCM IV is 12 bytes -> exactly 16 chars in base64. Filter out most plaintexts with colons.
+    if (ivBase64.length !== 16) {
+      return encryptedPayload;
+    }
+    
     const iv = await base64ToBuffer(ivBase64);
     const ciphertext = await base64ToBuffer(cipherBase64);
     
@@ -318,7 +322,9 @@ async function decryptText(encryptedPayload) {
     return new TextDecoder().decode(decrypted);
   } catch (e) {
     console.error("Decryption failed", e);
-    return "🔒 Encrypted Message";
+    // If decryption fails in the public room, it's extremely likely an old plaintext message
+    // that happened to have a 16-char string before a colon, or a tampered message.
+    return currentRoomId === "public" ? encryptedPayload : "🔒 Encrypted Message";
   }
 }
 
@@ -362,7 +368,6 @@ async function connect(options = {}) {
     if (payload.type === "hello") {
       setConnection("Connected live", "online");
       clientId = payload.clientId;
-      myColor = payload.users?.find(u => u.id === payload.clientId)?.color || "#6366f1";
       currentRoomId = payload.roomId || currentRoomId;
       updateRoomUi();
       nameInput.value = localStorage.getItem("shareTextLiveName") || payload.name;
@@ -440,6 +445,9 @@ async function connect(options = {}) {
     }
 
     if (payload.type === "presence") {
+      // Update our own color from the server's authoritative list
+      const me = (payload.users || []).find(u => u.id === clientId);
+      if (me) myColor = me.color;
       renderPeople(payload.users || [], payload.count || 0);
     }
 
@@ -696,10 +704,16 @@ function updateCountdowns() {
     const label = card.querySelector(".expires-label");
     const bar = card.querySelector(".expiry-bar span");
 
+    if (card.classList.contains("is-pending")) {
+      label.textContent = "Sending...";
+      bar.style.width = "100%";
+      continue;
+    }
+
     if (!expiresAt) {
       label.textContent = "Keep";
       bar.style.width = "100%";
-      return;
+      continue;
     }
 
     const remaining = Math.max(0, expiresAt - now);
@@ -755,6 +769,7 @@ function renderMessages() {
     node.dataset.expiresAt = message.expiresAt || "";
     
     if (message.isPending) {
+      node.classList.add("is-pending");
       node.style.opacity = "0.55";
       node.style.pointerEvents = "none";
       node.title = "Sending…";
@@ -1490,6 +1505,9 @@ messageForm.addEventListener("submit", async (event) => {
     shareButton.innerHTML = "Sending...";
     shareButton.disabled = true;
     messageInput.disabled = true;
+    
+    // Yield to browser to paint the button state before heavy crypto processing
+    await new Promise(r => setTimeout(r, 15));
   }
 
   // Encrypt and send
@@ -1519,23 +1537,25 @@ messageForm.addEventListener("submit", async (event) => {
     replyTo: replyingToMessage ? replyingToMessage.id : null,
     createdAt: now,
     updatedAt: now,
-    expiresAt: Number(expirySelect.value) ? now + Number(expirySelect.value) : now + (6 * 60 * 60 * 1000),
+    expiresAt: null, // Don't start timer until server confirms
     isPending: true
   };
   pendingMessages.set(pendingId, tempMessage);
   messages.push(tempMessage);
   renderMessages();
 
-  // Timeout: if server doesn't confirm within 10s, mark as failed
+  // Timeout: if server doesn't confirm within 60s, mark as failed visually
   setTimeout(() => {
     if (!pendingMessages.has(pendingId)) return; // already confirmed
-    pendingMessages.delete(pendingId);
-    const idx = messages.findIndex(m => m.id === pendingId);
-    if (idx !== -1) {
-      messages[idx] = { ...tempMessage, isFailed: true };
+    
+    // We keep it in the map so if it eventually succeeds, it can still reconcile
+    const msg = pendingMessages.get(pendingId);
+    if (msg) {
+      msg.isFailed = true;
+      msg.isPending = false;
       renderMessages();
     }
-  }, 10000);
+  }, 60000);
 
   // Reset UI immediately — user can type the next message
   messageInput.value = "";
