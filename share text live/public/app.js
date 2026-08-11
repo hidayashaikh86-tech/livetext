@@ -390,7 +390,13 @@ async function connect(options = {}) {
     }
     
     if (payload.type === "newMessage") {
-      messages.push(payload.message);
+      // If we have a pending message that matches, replace it
+      const pendingIdx = messages.findIndex(m => m.isPending && m.text === payload.message.text && m.authorId === clientId);
+      if (pendingIdx !== -1) {
+        messages[pendingIdx] = payload.message;
+      } else {
+        messages.push(payload.message);
+      }
       renderMessages();
       if (isAtBottom) scrollToBottom();
     }
@@ -738,6 +744,11 @@ function renderMessages() {
     node.dataset.createdAt = message.createdAt;
     node.dataset.messageId = message.id;
     node.dataset.expiresAt = message.expiresAt || "";
+    
+    if (message.isPending) {
+      node.style.opacity = "0.5";
+      node.style.pointerEvents = "none";
+    }
     author.textContent = message.authorName || "Guest";
     
     if (message.replyTo) {
@@ -1443,6 +1454,22 @@ messageForm.addEventListener("submit", async (event) => {
   const originalBtnContent = shareButton.innerHTML;
   
   const finishSending = () => {
+    // Optimistically render pending message
+    const tempId = "temp-" + Date.now();
+    const tempMessage = {
+      id: tempId,
+      text: payloadData,
+      authorId: clientId,
+      authorName: nameInput.value || localStorage.getItem("shareTextLiveName") || "You",
+      authorColor: "var(--primary)",
+      replyTo: replyingToMessage ? replyingToMessage.id : null,
+      createdAt: Date.now(),
+      expiresAt: Number(expirySelect.value) ? Date.now() + Number(expirySelect.value) : Date.now() + (6 * 60 * 60 * 1000),
+      isPending: true
+    };
+    messages.push(tempMessage);
+    renderMessages();
+    
     messageInput.value = "";
     messageInput.style.height = 'auto';
     charCount.textContent = "0/50000";
@@ -1452,7 +1479,7 @@ messageForm.addEventListener("submit", async (event) => {
     saveDraft();
     updateSendState();
     send({ type: "typing", text: "" });
-    showToast("Sent.");
+    showToast("Sending...");
     
     shareButton.innerHTML = originalBtnContent;
     shareButton.disabled = false;
