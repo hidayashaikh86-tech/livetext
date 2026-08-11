@@ -3,40 +3,97 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="About Shareli - The secure, real-time online text and file sharing platform." />
-    <title>About Us | Shareli</title>
+    <meta name="description" content="About Shareli — Learn how Shareli was built, our mission for privacy-first secure sharing of text, code, and files across any device without an account." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://shareli.online/about.html" />
+    <meta property="og:title" content="About Shareli — Secure Text & File Sharing" />
+    <meta property="og:description" content="Learn about Shareli's mission: instant, secure, anonymous text and file sharing with end-to-end encryption and zero data retention." />
+    <meta property="og:url" content="https://shareli.online/about.html" />
+    <meta property="og:type" content="website" />
+    <title>About Shareli — Secure Text, Code & File Sharing</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      .page-container { max-width: 800px; margin: 40px auto; padding: 20px; color: var(--text); }
-      h1 { margin-bottom: 24px; color: var(--text); font-size: 2rem; }
-      h2 { margin-top: 32px; margin-bottom: 16px; color: var(--text-muted); }
-      p { margin-bottom: 16px; line-height: 1.6; color: var(--muted); }
-      a { color: var(--accent); text-decoration: none; }
-      a:hover { text-decoration: underline; }
+      .page-wrap { max-width: 780px; margin: 0 auto; padding: 48px 24px 80px; }
+      .page-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 48px; font-size: 0.9rem; }
+      .page-nav a { color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
+      .page-nav a:hover { color: var(--ink); }
+      .page-hero { margin-bottom: 56px; }
+      .page-hero h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); font-weight: 800; line-height: 1.2; margin-bottom: 16px; color: var(--ink); }
+      .page-hero p { font-size: 1.1rem; line-height: 1.7; color: var(--muted); max-width: 600px; }
+      .accent { color: var(--accent); }
+      h2 { font-size: 1.3rem; font-weight: 700; margin: 40px 0 12px; color: var(--ink); }
+      p { line-height: 1.75; color: var(--muted); margin-bottom: 16px; }
+      .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin: 32px 0; }
+      .feature-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
+      .feature-card .icon { font-size: 1.6rem; margin-bottom: 12px; }
+      .feature-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; color: var(--ink); }
+      .feature-card p { font-size: 0.9rem; margin: 0; color: var(--muted); }
+      .page-footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; }
+      .page-footer a { color: var(--muted); text-decoration: none; }
+      .page-footer a:hover { color: var(--ink); }
     </style>
   </head>
-  <body class="theme-dark">
-    <main class="page-container">
-      <nav style="margin-bottom: 40px;">
-        <a href="/" style="display: flex; align-items: center; gap: 8px;">
-          <img src="/logo.jpg" alt="Shareli Logo" style="width: 24px; height: 24px; border-radius: 4px;" />
-          Back to Shareli
+  <body>
+    <main class="page-wrap">
+      <nav class="page-nav">
+        <a href="/">
+          <img src="/logo.jpg" alt="Shareli" style="width:20px;height:20px;border-radius:4px;" />
+          ← Back to Shareli
         </a>
       </nav>
-      
-      <h1>About Shareli</h1>
-      
+
+      <div class="page-hero">
+        <h1>Built for <span class="accent">instant</span>, private sharing.</h1>
+        <p>Shareli was created with one goal: make sharing text, code, and files as fast and secure as possible — without requiring an account, email, or any personal information.</p>
+      </div>
+
       <h2>Our Mission</h2>
-      <p>Shareli was built with a simple goal: to make sharing text, code snippets, and files across devices as fast and frictionless as possible, without ever compromising on security.</p>
-      <p>In a world where data privacy is increasingly threatened, we believe that moving information from point A to point B should not require creating an account, surrendering personal data, or leaving a permanent digital footprint.</p>
+      <p>In a world where data privacy is increasingly threatened, moving information from one device to another should not leave a permanent digital footprint. Shareli is designed around this principle — your data belongs only to you, and once it's gone, it's truly gone.</p>
+      <p>We built Shareli for developers, students, professionals, and anyone who needs to quickly transfer information across devices without the friction of logging in or the risk of leaving data on someone else's servers.</p>
 
-      <h2>How It Works</h2>
-      <p>When you use Shareli, everything is processed directly in your browser. We utilize the WebCrypto API to encrypt your messages before they ever leave your device. The keys to decrypt this data are contained only in the URL link you share with your recipient. Our servers act merely as a silent relay, completely blind to the contents of your communication.</p>
+      <h2>How the Encryption Works</h2>
+      <p>Shareli uses the <strong>WebCrypto API</strong> (AES-GCM 256-bit encryption) built directly into your browser. When you send a message, it is encrypted on your device before it is transmitted. The encryption key lives only in the room URL — our server never sees it and never stores your message content.</p>
+      <p>This means even if someone intercepted the data on our server, they would only see encrypted gibberish. Only people with your room link can decrypt and read the messages.</p>
 
-      <h2>Built for Everyone</h2>
-      <p>Whether you're a developer needing to securely transfer API keys, a professional sharing a sensitive document, or simply someone wanting to copy a link from their phone to their laptop, Shareli provides the secure ephemeral bridge to get it done instantly.</p>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="icon">🔐</div>
+          <h3>End-to-End Encrypted</h3>
+          <p>AES-GCM encryption via the WebCrypto API. The server never sees your content.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">⏱️</div>
+          <h3>Self-Destructing</h3>
+          <p>Set timers from 1 minute to 6 hours. Messages delete automatically with no trace.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🚫</div>
+          <h3>No Account Needed</h3>
+          <p>No sign-up, no email, no tracking. Open the app and start sharing immediately.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📱</div>
+          <h3>Works Everywhere</h3>
+          <p>Any browser, any device — phone, laptop, tablet, desktop. Installable as a PWA.</p>
+        </div>
+      </div>
 
+      <h2>Who Built Shareli?</h2>
+      <p>Shareli was built and is maintained independently. It is a passion project focused on solving a real problem: the lack of a simple, secure, zero-trace tool for quickly sharing information between devices and people.</p>
+      <p>Have feedback or a question? <a href="/contact.html">Contact us here</a>.</p>
+
+      <footer class="page-footer">
+        <a href="/">Home</a>
+        <a href="/blog.html">Blog</a>
+        <a href="/faq.html">FAQ</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+        <a href="/contact.html">Contact</a>
+      </footer>
     </main>
   </body>
 </html>

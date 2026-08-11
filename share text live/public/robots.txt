@@ -1,4 +1,13 @@
 User-agent: *
 Allow: /
+Allow: /about.html
+Allow: /blog.html
+Allow: /contact.html
+Allow: /faq.html
+Allow: /privacy.html
+Allow: /terms.html
+
+# Block API and WebSocket endpoints from crawlers
+Disallow: /health
 
 Sitemap: https://shareli.online/sitemap.xml

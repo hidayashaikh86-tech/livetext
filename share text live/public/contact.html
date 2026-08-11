@@ -3,53 +3,82 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Contact Shareli support or report abuse." />
-    <title>Contact Us | Shareli</title>
+    <meta name="description" content="Contact Shareli — Send us a feature request, bug report, or general question. We respond to all inquiries via email." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://shareli.online/contact.html" />
+    <meta property="og:title" content="Contact Shareli — Get in Touch" />
+    <meta property="og:description" content="Have a question, feedback, or bug report? Contact the Shareli team directly via email." />
+    <meta property="og:url" content="https://shareli.online/contact.html" />
+    <meta property="og:type" content="website" />
+    <title>Contact Us | Shareli — Secure Text & File Sharing</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      .page-container { max-width: 800px; margin: 40px auto; padding: 20px; color: var(--text); }
-      h1 { margin-bottom: 24px; color: var(--text); font-size: 2rem; }
-      h2 { margin-top: 32px; margin-bottom: 16px; color: var(--text-muted); }
-      p { margin-bottom: 16px; line-height: 1.6; color: var(--muted); }
+      .page-wrap { max-width: 780px; margin: 0 auto; padding: 48px 24px 80px; }
+      .page-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 48px; font-size: 0.9rem; }
+      .page-nav a { color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
+      .page-nav a:hover { color: var(--ink); }
+      .page-hero { margin-bottom: 48px; }
+      .page-hero h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); font-weight: 800; line-height: 1.2; margin-bottom: 14px; color: var(--ink); }
+      .page-hero p { font-size: 1.05rem; line-height: 1.7; color: var(--muted); }
+      h2 { font-size: 1.1rem; font-weight: 700; color: var(--ink); margin: 36px 0 10px; }
+      p { line-height: 1.75; color: var(--muted); margin-bottom: 14px; }
       a { color: var(--accent); text-decoration: none; }
       a:hover { text-decoration: underline; }
-      
-      .contact-card {
-        background: var(--surface-light);
-        padding: 24px;
-        border-radius: 8px;
-        border: 1px solid var(--border);
-        margin-top: 24px;
-        display: inline-block;
-      }
-      .contact-card a {
-        font-weight: 700;
-        font-size: 1.2rem;
-      }
+      .contact-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 32px; margin: 24px 0; }
+      .contact-card .label { font-size: 0.85rem; color: var(--muted); margin-bottom: 8px; }
+      .contact-card .email { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+      .reason-list { list-style: none; padding: 0; margin: 0; }
+      .reason-list li { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 0.95rem; color: var(--muted); line-height: 1.6; }
+      .reason-list li:last-child { border-bottom: none; }
+      .reason-list .icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+      .page-footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; }
+      .page-footer a { color: var(--muted); text-decoration: none; }
+      .page-footer a:hover { color: var(--ink); }
     </style>
   </head>
-  <body class="theme-dark">
-    <main class="page-container">
-      <nav style="margin-bottom: 40px;">
-        <a href="/" style="display: flex; align-items: center; gap: 8px;">
-          <img src="/logo.jpg" alt="Shareli Logo" style="width: 24px; height: 24px; border-radius: 4px;" />
-          Back to Shareli
+  <body>
+    <main class="page-wrap">
+      <nav class="page-nav">
+        <a href="/">
+          <img src="/logo.jpg" alt="Shareli" style="width:20px;height:20px;border-radius:4px;" />
+          ← Back to Shareli
         </a>
       </nav>
-      
-      <h1>Contact Shareli</h1>
-      
-      <p>We love hearing from our users. Whether you have a feature request, a bug report, or a business inquiry, you can reach out to us directly via email.</p>
 
-      <div class="contact-card">
-        <p style="margin-bottom: 8px; font-size: 0.9rem;">Email us at:</p>
-        <a href="mailto:hida7149@gmail.com">hida7149@gmail.com</a>
+      <div class="page-hero">
+        <h1>Get in Touch</h1>
+        <p>Have a question, found a bug, or want to suggest a feature? We would love to hear from you. Reach out directly and we will get back to you as soon as possible.</p>
       </div>
 
-      <h2>Reporting Abuse</h2>
-      <p>Because Shareli utilizes End-to-End Encryption (E2EE), we cannot see or read the contents of any live room. However, if you suspect that our platform is being used to distribute illegal content, please contact us immediately at the email above with the room link and we will terminate the session immediately.</p>
+      <div class="contact-card">
+        <p class="label">Send us an email at</p>
+        <a class="email" href="mailto:hida7149@gmail.com">hida7149@gmail.com</a>
+      </div>
 
+      <h2>What can you contact us about?</h2>
+      <ul class="reason-list">
+        <li><span class="icon">🐛</span> <span><strong>Bug Reports</strong> — Found something broken? Tell us what happened and which browser or device you were using.</span></li>
+        <li><span class="icon">💡</span> <span><strong>Feature Requests</strong> — Have an idea that would make Shareli better? We are always open to new suggestions.</span></li>
+        <li><span class="icon">🔒</span> <span><strong>Security Issues</strong> — Found a potential vulnerability? Please report it responsibly via email rather than publicly disclosing it.</span></li>
+        <li><span class="icon">🚫</span> <span><strong>Abuse Reports</strong> — If you believe Shareli is being used for illegal activity, contact us immediately with the room link and we will terminate the session.</span></li>
+        <li><span class="icon">💬</span> <span><strong>General Feedback</strong> — We appreciate all feedback, positive or critical. It helps us improve the product.</span></li>
+      </ul>
+
+      <h2>A Note on Abuse Reports</h2>
+      <p>Shareli uses end-to-end encryption, which means we cannot read the contents of any room. However, we can immediately terminate any session if provided with the room URL and evidence of misuse. We take abuse reports very seriously and aim to respond within 24 hours.</p>
+
+      <footer class="page-footer">
+        <a href="/">Home</a>
+        <a href="/about.html">About</a>
+        <a href="/blog.html">Blog</a>
+        <a href="/faq.html">FAQ</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+      </footer>
     </main>
   </body>
 </html>

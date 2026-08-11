@@ -3,48 +3,131 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Frequently Asked Questions on how to share text online easily and securely with Shareli." />
-    <title>How to Share Text Online - FAQ | Shareli</title>
+    <meta name="description" content="Shareli FAQ — Everything you need to know about sharing text, code, and files securely online. No account required. End-to-end encrypted." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://shareli.online/faq.html" />
+    <meta property="og:title" content="FAQ — How to Share Text, Code & Files Securely | Shareli" />
+    <meta property="og:description" content="Answers to common questions about using Shareli for secure, anonymous text and file sharing online." />
+    <meta property="og:url" content="https://shareli.online/faq.html" />
+    <meta property="og:type" content="website" />
+    <title>FAQ — How to Share Text, Code & Files Securely | Shareli</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      .page-container { max-width: 800px; margin: 40px auto; padding: 20px; color: var(--text); }
-      h1 { margin-bottom: 24px; color: var(--text); font-size: 2rem; }
-      h2 { margin-top: 32px; margin-bottom: 16px; color: var(--text-muted); }
-      p, li { margin-bottom: 16px; line-height: 1.6; color: var(--muted); }
-      a { color: var(--accent); text-decoration: none; }
-      a:hover { text-decoration: underline; }
+      .page-wrap { max-width: 780px; margin: 0 auto; padding: 48px 24px 80px; }
+      .page-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 48px; font-size: 0.9rem; }
+      .page-nav a { color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
+      .page-nav a:hover { color: var(--ink); }
+      .page-hero { margin-bottom: 48px; }
+      .page-hero h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); font-weight: 800; line-height: 1.2; margin-bottom: 14px; color: var(--ink); }
+      .page-hero p { font-size: 1.05rem; line-height: 1.7; color: var(--muted); }
+      .faq-item { border-bottom: 1px solid var(--line); padding: 24px 0; }
+      .faq-item:last-of-type { border-bottom: none; }
+      .faq-item h2 { font-size: 1.05rem; font-weight: 600; color: var(--ink); margin: 0 0 12px; cursor: pointer; }
+      .faq-item p { line-height: 1.75; color: var(--muted); margin: 0; }
+      .faq-item a { color: var(--accent); text-decoration: none; }
+      .faq-item a:hover { text-decoration: underline; }
+      .page-footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; }
+      .page-footer a { color: var(--muted); text-decoration: none; }
+      .page-footer a:hover { color: var(--ink); }
     </style>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "What is Shareli?", "acceptedAnswer": { "@type": "Answer", "text": "Shareli is a free, browser-based tool for sharing text, code snippets, and files in real time. No account or installation required." } },
+        { "@type": "Question", "name": "Does Shareli require an account?", "acceptedAnswer": { "@type": "Answer", "text": "No. Shareli does not require any account, email address, or personal information. Open the website and start sharing instantly." } },
+        { "@type": "Question", "name": "Is Shareli secure?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Shareli uses AES-GCM end-to-end encryption via the WebCrypto API. The server never sees your decrypted messages or files." } },
+        { "@type": "Question", "name": "Can I share source code on Shareli?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Shareli supports Markdown rendering and syntax highlighting for JavaScript, Python, Java, C++, HTML, CSS, and many more languages." } },
+        { "@type": "Question", "name": "Can I share files on Shareli?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Attach any file type directly in a Shareli room. Images display inline; other files can be downloaded by recipients." } },
+        { "@type": "Question", "name": "How long does content stay on Shareli?", "acceptedAnswer": { "@type": "Answer", "text": "Timers range from 1 minute to 6 hours. Nothing is stored permanently. When the timer expires, the content is permanently deleted." } },
+        { "@type": "Question", "name": "What is a private room on Shareli?", "acceptedAnswer": { "@type": "Answer", "text": "A private room is a unique, encrypted space only accessible to people with your specific room link or QR code." } },
+        { "@type": "Question", "name": "Can I use Shareli on mobile?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Shareli is fully responsive and works on Safari (iOS), Chrome (Android), and all modern mobile browsers. It can also be installed as a PWA." } }
+      ]
+    }
+    </script>
   </head>
-  <body class="theme-dark">
-    <main class="page-container">
-      <nav style="margin-bottom: 40px;">
-        <a href="/" style="display: flex; align-items: center; gap: 8px;">
-          <img src="/logo.jpg" alt="Shareli Logo" style="width: 24px; height: 24px; border-radius: 4px;" />
-          Back to Shareli
+  <body>
+    <main class="page-wrap">
+      <nav class="page-nav">
+        <a href="/">
+          <img src="/logo.jpg" alt="Shareli" style="width:20px;height:20px;border-radius:4px;" />
+          ← Back to Shareli
         </a>
       </nav>
-      
-      <h1>How to Share Text Online (FAQ)</h1>
-      
-      <h2>What is Shareli?</h2>
-      <p>Shareli is a free online text sharing platform designed to let you share text securely, simply, and quickly. Whether you need a temporary pastebin, a way to share code snippets, or a secure clipboard between devices, Shareli makes it seamless.</p>
 
-      <h2>How do I share text with a link?</h2>
-      <p>It's incredibly easy:</p>
-      <ol>
-        <li>Go to the <a href="/">Shareli homepage</a>.</li>
-        <li>Type or paste your text into the message box.</li>
-        <li>Click "Send". Your text is instantly encrypted and available in your private live room.</li>
-        <li>Copy the "Room link" from the sidebar and share it with anyone. They can instantly see the text without refreshing the page!</li>
-      </ol>
+      <div class="page-hero">
+        <h1>Frequently Asked Questions</h1>
+        <p>Everything you need to know about using Shareli for secure, anonymous text, code, and file sharing online.</p>
+      </div>
 
-      <h2>Is it secure?</h2>
-      <p>Yes. Shareli uses End-to-End Encryption (E2EE) powered by the WebCrypto API. Your messages and files are encrypted directly in your browser. We do not store any of your chat data, logs, or files on our servers. Once you close the room, the data is gone forever.</p>
+      <div class="faq-item">
+        <h2>What is Shareli?</h2>
+        <p>Shareli is a free, browser-based platform for sharing text, source code, files, and links in real time. It is designed for anyone who needs to quickly transfer information between their own devices or share content with a small group — without signing up for a service or installing an app.</p>
+      </div>
 
-      <h2>Can I share files and code?</h2>
-      <p>Absolutely. Shareli supports large file sharing and provides automatic syntax highlighting for code snippets.</p>
+      <div class="faq-item">
+        <h2>Does Shareli require an account or sign-up?</h2>
+        <p>No. Shareli does not require you to create an account, provide an email address, or remember any password. Simply open the website and start sharing within seconds. Your anonymity is fully preserved by design.</p>
+      </div>
 
+      <div class="faq-item">
+        <h2>Is Shareli secure and private?</h2>
+        <p>Yes. Shareli uses <strong>AES-GCM 256-bit end-to-end encryption</strong> powered by the WebCrypto API built into your browser. Your messages are encrypted on your device before they are sent. The encryption key is embedded in the room URL only — our server never sees your decrypted content and never stores it permanently.</p>
+      </div>
+
+      <div class="faq-item">
+        <h2>How do I share text with someone using Shareli?</h2>
+        <p>It takes three steps: (1) Open Shareli in your browser. (2) Type or paste your text and click Send. (3) Share your room link with the recipient — they open it in any browser and instantly see the message. No refresh needed. It is live and real-time.</p>
+      </div>
+
+      <div class="faq-item">
+        <h2>Can I share source code with syntax highlighting?</h2>
+        <p>Yes. Shareli automatically detects and highlights code in most major programming languages including JavaScript, Python, Java, C, C++, TypeScript, HTML, CSS, SQL, Bash, and many more. You can also use Markdown formatting in your messages.</p>
+      </div>
+
+      <div class="faq-item">
+        <h2>Can I share files and images on Shareli?</h2>
+        <p>Yes. Click the attachment button in the message bar to attach any file type. Images are rendered inline inside the chat. Other files (PDFs, ZIPs, documents) appear as a download card that recipients can click to save.</p>
+      </div>
+
+      <div class="faq-item">
+        <h2>How long does shared content remain available?</h2>
+        <p>Content on Shareli is temporary by design. When you send a message you can choose a self-destruct timer: <strong>1 minute, 5 minutes, 30 minutes, 1 hour</strong>, or <strong>Keep (6 hours)</strong>. When the timer expires the message is permanently deleted from the server. Nothing is stored long-term. There is no permanent database.</p>
+      </div>
+
+      <div class="faq-item">
+        <h2>What is a Private Room?</h2>
+        <p>A Private Room is a unique, encrypted space that only people who have your specific room link or QR code can access. Click <strong>"Create Private Room"</strong> on the main page, then share the generated link via WhatsApp, email, or show the QR code for someone to scan. Nobody else can find or enter your private room.</p>
+      </div>
+
+      <div class="faq-item">
+        <h2>Can I use Shareli on my phone?</h2>
+        <p>Yes. Shareli is fully responsive and works on all modern mobile browsers — Safari on iPhone/iPad and Chrome on Android. You can also add it to your home screen as a <strong>Progressive Web App (PWA)</strong> for an app-like experience without visiting the App Store.</p>
+      </div>
+
+      <div class="faq-item">
+        <h2>Does Shareli store any of my data?</h2>
+        <p>No. Shareli is designed with a strict zero-retention policy. Messages are stored temporarily in server memory (RAM) only for as long as their timer is active. There is no database, no logs, and no analytics tracking your usage. When the server restarts, all data in RAM is wiped permanently.</p>
+      </div>
+
+      <div class="faq-item">
+        <h2>Is Shareli free to use?</h2>
+        <p>Yes, Shareli is completely free. There are no paid plans, no premium features hidden behind a paywall, and no advertisements. <a href="/contact.html">Contact us</a> if you have any other questions.</p>
+      </div>
+
+      <footer class="page-footer">
+        <a href="/">Home</a>
+        <a href="/about.html">About</a>
+        <a href="/blog.html">Blog</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+        <a href="/contact.html">Contact</a>
+      </footer>
     </main>
   </body>
 </html>

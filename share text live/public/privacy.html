@@ -3,42 +3,106 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Privacy policy for Shareli, the secure online text sharing platform." />
-    <title>Privacy Policy | Shareli</title>
+    <meta name="description" content="Shareli Privacy Policy — We collect no personal data, use no tracking cookies, and store no messages. All content is end-to-end encrypted and self-destructs." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://shareli.online/privacy.html" />
+    <meta property="og:title" content="Privacy Policy | Shareli — Zero Data Retention" />
+    <meta property="og:description" content="Shareli collects no personal data, uses no tracking cookies, and stores no messages permanently. Read our full privacy policy." />
+    <meta property="og:url" content="https://shareli.online/privacy.html" />
+    <meta property="og:type" content="website" />
+    <title>Privacy Policy | Shareli — Zero Data Retention & No Tracking</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      .page-container { max-width: 800px; margin: 40px auto; padding: 20px; color: var(--text); }
-      h1 { margin-bottom: 24px; color: var(--text); font-size: 2rem; }
-      h2 { margin-top: 32px; margin-bottom: 16px; color: var(--text-muted); }
-      p { margin-bottom: 16px; line-height: 1.6; color: var(--muted); }
+      .page-wrap { max-width: 780px; margin: 0 auto; padding: 48px 24px 80px; }
+      .page-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 48px; font-size: 0.9rem; }
+      .page-nav a { color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
+      .page-nav a:hover { color: var(--ink); }
+      .page-hero { margin-bottom: 48px; }
+      .page-hero h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); font-weight: 800; line-height: 1.2; margin-bottom: 14px; color: var(--ink); }
+      .page-hero p { font-size: 1.05rem; line-height: 1.7; color: var(--muted); }
+      .last-updated { font-size: 0.82rem; color: var(--muted); margin-bottom: 40px; }
+      h2 { font-size: 1.1rem; font-weight: 700; color: var(--ink); margin: 36px 0 10px; }
+      p { line-height: 1.75; color: var(--muted); margin-bottom: 14px; font-size: 0.95rem; }
+      ul { padding-left: 20px; margin-bottom: 14px; }
+      li { line-height: 1.7; color: var(--muted); margin-bottom: 6px; font-size: 0.95rem; }
       a { color: var(--accent); text-decoration: none; }
       a:hover { text-decoration: underline; }
+      .highlight-box { background: var(--surface); border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; padding: 20px 24px; margin: 24px 0; }
+      .highlight-box p { margin: 0; font-size: 0.95rem; }
+      .page-footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; }
+      .page-footer a { color: var(--muted); text-decoration: none; }
+      .page-footer a:hover { color: var(--ink); }
     </style>
   </head>
-  <body class="theme-dark">
-    <main class="page-container">
-      <nav style="margin-bottom: 40px;">
-        <a href="/" style="display: flex; align-items: center; gap: 8px;">
-          <img src="/logo.jpg" alt="Shareli Logo" style="width: 24px; height: 24px; border-radius: 4px;" />
-          Back to Shareli
+  <body>
+    <main class="page-wrap">
+      <nav class="page-nav">
+        <a href="/">
+          <img src="/logo.jpg" alt="Shareli" style="width:20px;height:20px;border-radius:4px;" />
+          ← Back to Shareli
         </a>
       </nav>
-      
-      <h1>Privacy Policy</h1>
-      
-      <h2>Zero Data Retention</h2>
-      <p>Shareli is built on the fundamental principle of absolute privacy. We do not require registration, we do not track your identity, and we do not store your data. All text, code, and files shared through Shareli are ephemeral and exist only while the live room is active.</p>
 
-      <h2>End-to-End Encryption</h2>
-      <p>All communication within Shareli is protected by state-of-the-art End-to-End Encryption (E2EE) using the WebCrypto API (AES-GCM). The encryption keys are generated in your browser and are never transmitted to or known by our servers. We cannot read your messages or access your files, even if we wanted to.</p>
+      <div class="page-hero">
+        <h1>Privacy Policy</h1>
+        <p>Shareli is built around a single privacy principle: <strong>your data belongs to you</strong>. We do not collect, sell, or store your personal information.</p>
+      </div>
+      <p class="last-updated">Last updated: August 2026</p>
 
-      <h2>No Tracking Cookies</h2>
-      <p>We do not use tracking cookies or third-party analytics that compromise your privacy.</p>
+      <div class="highlight-box">
+        <p>🔒 <strong>Summary:</strong> Shareli collects no personal data, uses no tracking cookies, stores no messages permanently, and cannot read your encrypted content. All data self-destructs.</p>
+      </div>
 
-      <h2>Changes to this Policy</h2>
-      <p>We may update our Privacy Policy from time to time. Any changes will be posted on this page.</p>
+      <h2>1. What Information We Collect</h2>
+      <p>We collect <strong>no personal information</strong>. You do not need to provide a name, email address, phone number, or any other personal detail to use Shareli. When you connect to Shareli, the server assigns you a temporary anonymous display name (e.g. "Guest 04") that is discarded when you disconnect.</p>
 
+      <h2>2. How We Handle Your Messages and Files</h2>
+      <p>All messages and files shared through Shareli are:</p>
+      <ul>
+        <li>Encrypted in your browser using AES-GCM 256-bit encryption before being transmitted.</li>
+        <li>Stored only in the server's RAM (temporary memory) — never written to a database or permanent disk storage.</li>
+        <li>Automatically deleted when the self-destruct timer you set expires.</li>
+        <li>Permanently lost when the server restarts — there is no backup or recovery mechanism by design.</li>
+      </ul>
+      <p>The server never has access to the encryption keys used to protect your content. Keys are generated in your browser and exist only in the room URL that you share with your recipients.</p>
+
+      <h2>3. Cookies and Tracking</h2>
+      <p>Shareli does <strong>not</strong> use:</p>
+      <ul>
+        <li>Tracking cookies or advertising cookies</li>
+        <li>Third-party analytics services (e.g. Google Analytics)</li>
+        <li>Fingerprinting or behavioral tracking</li>
+        <li>Any form of cross-site tracking</li>
+      </ul>
+      <p>The only local storage used is to save your chosen display name between sessions. This data never leaves your device and can be cleared by clearing your browser's local storage.</p>
+
+      <h2>4. Server Logs</h2>
+      <p>Our hosting provider (Render) may collect basic server access logs (IP address, request timestamps, HTTP status codes) as part of normal infrastructure operation. These logs are managed by Render under their own privacy policy and are not used by Shareli for any purpose.</p>
+
+      <h2>5. Third-Party Services</h2>
+      <p>Shareli loads fonts from Google Fonts and syntax highlighting libraries from CDN providers. These external requests may result in your IP address being visible to those providers. No personal data is shared with these services by Shareli.</p>
+
+      <h2>6. Children's Privacy</h2>
+      <p>Shareli is not directed at children under the age of 13. We do not knowingly collect any data from children.</p>
+
+      <h2>7. Changes to This Policy</h2>
+      <p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated date. Continued use of Shareli after changes constitutes acceptance of the updated policy.</p>
+
+      <h2>8. Contact</h2>
+      <p>If you have any questions about this Privacy Policy, please <a href="/contact.html">contact us</a>.</p>
+
+      <footer class="page-footer">
+        <a href="/">Home</a>
+        <a href="/about.html">About</a>
+        <a href="/blog.html">Blog</a>
+        <a href="/faq.html">FAQ</a>
+        <a href="/terms.html">Terms</a>
+        <a href="/contact.html">Contact</a>
+      </footer>
     </main>
   </body>
 </html>
