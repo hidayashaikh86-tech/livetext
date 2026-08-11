@@ -17,6 +17,9 @@ const pwConfirm = document.getElementById("pw-confirm");
 const pwCancel = document.getElementById("pw-cancel");
 const pwToggle = document.getElementById("pw-toggle");
 const pwEyeIcon = document.getElementById("pw-eye-icon");
+const pwModalTitle = document.getElementById("pw-modal-title");
+const pwModalDesc = document.getElementById("pw-modal-desc");
+const pwModalLabel = document.getElementById("pw-modal-label");
 const typingPreviews = document.querySelector("#typing-previews");
 const peopleCount = document.querySelector("#people-count");
 const peopleList = document.querySelector("#people-list");
@@ -193,15 +196,26 @@ async function setupCryptoKey() {
 }
 
 // Shows a styled password prompt overlay and resolves with the entered password
+// mode: 'join' = entering password to decrypt, 'create' = creating room (handled separately)
 function promptForPassword() {
   return new Promise((resolve) => {
     if (!pwModal) { resolve(window.prompt("Enter room password:") || ""); return; }
+
+    // Switch modal to JOIN mode
+    if (pwModalTitle) pwModalTitle.textContent = "🔐 Password Required";
+    if (pwModalDesc) pwModalDesc.textContent = "This room is password-protected. Enter the password shared by the room creator to read messages.";
+    if (pwModalLabel) pwModalLabel.textContent = "Password";
+    if (pwConfirm) pwConfirm.textContent = "Unlock Room";
+    pwInput.placeholder = "Enter room password…";
     pwInput.value = "";
+    pwInput.type = "password";
+    if (pwEyeIcon) pwEyeIcon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+
+    // Hide Cancel — user must enter the password to proceed
+    if (pwCancel) pwCancel.style.display = "none";
+
     pwModal.classList.remove("hidden");
     pwModal.setAttribute("aria-hidden", "false");
-
-    // In prompt-mode, hide Cancel (user MUST enter password to proceed)
-    if (pwCancel) pwCancel.style.display = "none";
 
     const onConfirm = () => {
       const pw = pwInput.value.trim();
@@ -216,6 +230,12 @@ function promptForPassword() {
       pwInput.removeEventListener("keydown", onKeydown);
       pwModal.classList.add("hidden");
       pwModal.setAttribute("aria-hidden", "true");
+      // Restore to create-mode defaults
+      if (pwModalTitle) pwModalTitle.textContent = "New Private Room";
+      if (pwModalDesc) pwModalDesc.textContent = "Optionally add a password. Anyone with the correct password can decrypt messages — the server never sees it.";
+      if (pwModalLabel) pwModalLabel.textContent = "Password (optional)";
+      if (pwConfirm) pwConfirm.textContent = "Create Room";
+      pwInput.placeholder = "Leave blank for random key…";
       if (pwCancel) pwCancel.style.display = "";
     }
 

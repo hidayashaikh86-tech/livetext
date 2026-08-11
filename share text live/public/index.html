@@ -295,11 +295,11 @@
     <!-- Password Room Modal -->
     <div id="pw-modal" class="modal-overlay hidden" aria-hidden="true">
       <div class="modal-content" style="max-width: 360px; padding: 28px;">
-        <h3 style="margin-top: 0; margin-bottom: 6px; font-size: 1.1rem;">New Private Room</h3>
-        <p style="margin: 0 0 20px; font-size: 0.82rem; color: var(--muted); line-height: 1.5;">
+        <h3 id="pw-modal-title" style="margin-top: 0; margin-bottom: 6px; font-size: 1.1rem;">New Private Room</h3>
+        <p id="pw-modal-desc" style="margin: 0 0 20px; font-size: 0.82rem; color: var(--muted); line-height: 1.5;">
           Optionally add a password. Anyone with the correct password can decrypt messages — the server never sees it.
         </p>
-        <label style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px;" for="pw-input">Password (optional)</label>
+        <label id="pw-modal-label" style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px;" for="pw-input">Password (optional)</label>
         <div style="position: relative; margin-bottom: 18px;">
           <input id="pw-input" type="password" placeholder="Leave blank for random key…" autocomplete="new-password"
             style="width: 100%; box-sizing: border-box; padding: 10px 40px 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.9rem; outline: none;" />
