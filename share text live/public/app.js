@@ -11,6 +11,12 @@ const messagesEl = document.querySelector("#messages");
 const messageCount = document.querySelector("#message-count");
 const copyAllButton = document.querySelector("#copy-all");
 const clearRoomButton = document.querySelector("#clear-room");
+const pwModal = document.getElementById("pw-modal");
+const pwInput = document.getElementById("pw-input");
+const pwConfirm = document.getElementById("pw-confirm");
+const pwCancel = document.getElementById("pw-cancel");
+const pwToggle = document.getElementById("pw-toggle");
+const pwEyeIcon = document.getElementById("pw-eye-icon");
 const typingPreviews = document.querySelector("#typing-previews");
 const peopleCount = document.querySelector("#people-count");
 const peopleList = document.querySelector("#people-list");
@@ -113,6 +119,30 @@ if (window.visualViewport) {
   });
 }
 
+// Derives a deterministic AES-256 key from a password + roomId using PBKDF2
+async function deriveKeyFromPassword(password, roomId) {
+  const encoder = new TextEncoder();
+  const baseKey = await window.crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"]
+  );
+  return window.crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: encoder.encode("shareli-" + roomId),
+      iterations: 200000,
+      hash: "SHA-256"
+    },
+    baseKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
 async function setupCryptoKey() {
   if (currentRoomId === "public") {
     // Shared constant key for the public room so everyone can read each other's messages
@@ -128,6 +158,16 @@ async function setupCryptoKey() {
   const hash = window.location.hash.slice(1);
   const hashParams = new URLSearchParams(hash);
   let keyBase64 = hashParams.get('key');
+  const isPasswordProtected = hashParams.get('pwd') === '1';
+
+  // If the room is password-protected and no raw key is embedded, prompt for password
+  if (isPasswordProtected && !keyBase64) {
+    const password = await promptForPassword();
+    if (password) {
+      roomCryptoKey = await deriveKeyFromPassword(password, currentRoomId);
+    }
+    return;
+  }
 
   if (!keyBase64) {
     const key = await window.crypto.subtle.generateKey(
@@ -150,6 +190,39 @@ async function setupCryptoKey() {
     false,
     ["encrypt", "decrypt"]
   );
+}
+
+// Shows a styled password prompt overlay and resolves with the entered password
+function promptForPassword() {
+  return new Promise((resolve) => {
+    if (!pwModal) { resolve(window.prompt("Enter room password:") || ""); return; }
+    pwInput.value = "";
+    pwModal.classList.remove("hidden");
+    pwModal.setAttribute("aria-hidden", "false");
+
+    // In prompt-mode, hide Cancel (user MUST enter password to proceed)
+    if (pwCancel) pwCancel.style.display = "none";
+
+    const onConfirm = () => {
+      const pw = pwInput.value.trim();
+      cleanup();
+      resolve(pw);
+    };
+
+    const onKeydown = (e) => { if (e.key === "Enter") onConfirm(); };
+
+    function cleanup() {
+      pwConfirm.removeEventListener("click", onConfirm);
+      pwInput.removeEventListener("keydown", onKeydown);
+      pwModal.classList.add("hidden");
+      pwModal.setAttribute("aria-hidden", "true");
+      if (pwCancel) pwCancel.style.display = "";
+    }
+
+    pwConfirm.addEventListener("click", onConfirm);
+    pwInput.addEventListener("keydown", onKeydown);
+    setTimeout(() => pwInput.focus(), 50);
+  });
 }
 
 async function encryptText(plainText) {
@@ -214,8 +287,8 @@ async function decryptText(encryptedPayload) {
   }
 }
 
-async function connect() {
-  await setupCryptoKey();
+async function connect(options = {}) {
+  if (!options.skipCrypto) await setupCryptoKey();
   updateRoomUi();
 
   if (location.protocol === "file:") {
@@ -1155,17 +1228,126 @@ if (exportRoomButton) {
   });
 }
 
+// Password toggle eye icon
+if (pwToggle && pwInput) {
+  pwToggle.addEventListener("click", () => {
+    const isHidden = pwInput.type === "password";
+    pwInput.type = isHidden ? "text" : "password";
+    if (pwEyeIcon) {
+      pwEyeIcon.innerHTML = isHidden
+        ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`
+        : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>` ;
+    }
+  });
+}
+
 newRoomButton.addEventListener("click", () => {
-  const roomId = generateRoomId();
-  currentRoomId = roomId;
-  updateRoomUi();
-  copyText(roomLink.value, newRoomButton);
-  switchRoom(roomId);
-  if (sidebar) sidebar.classList.remove('open');
-  if (sidebarOverlay) {
-    sidebarOverlay.classList.remove('active');
-    sidebarOverlay.classList.add('hidden');
+  if (!pwModal) {
+    // Fallback if modal not found
+    const roomId = generateRoomId();
+    currentRoomId = roomId;
+    updateRoomUi();
+    copyText(roomLink.value, newRoomButton);
+    switchRoom(roomId);
+    return;
   }
+
+  // Show the password modal
+  pwInput.value = "";
+  pwInput.type = "password";
+  if (pwEyeIcon) pwEyeIcon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+  if (pwCancel) pwCancel.style.display = "";
+  pwModal.classList.remove("hidden");
+  pwModal.setAttribute("aria-hidden", "false");
+  setTimeout(() => pwInput.focus(), 50);
+
+  const createRoom = async () => {
+    const password = pwInput.value.trim();
+    const roomId = generateRoomId();
+    currentRoomId = roomId;
+
+    if (password) {
+      // Derive the AES key from the password
+      roomCryptoKey = await deriveKeyFromPassword(password, roomId);
+      // Store pwd=1 in the hash so visitors know to prompt for password
+      // We do NOT embed the raw key in the URL — only the password flag
+      const hashParams = new URLSearchParams();
+      hashParams.set('pwd', '1');
+      history.replaceState({}, "", window.location.pathname + `?room=${encodeURIComponent(roomId)}` + '#' + hashParams.toString());
+    } else {
+      // No password — generate a random key and embed it in the hash (existing behaviour)
+      const key = await window.crypto.subtle.generateKey(
+        { name: "AES-GCM", length: 256 },
+        true,
+        ["encrypt", "decrypt"]
+      );
+      const exported = await window.crypto.subtle.exportKey("raw", key);
+      const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(exported)));
+      roomCryptoKey = key;
+      const hashParams = new URLSearchParams();
+      hashParams.set('key', keyBase64);
+      history.replaceState({}, "", window.location.pathname + `?room=${encodeURIComponent(roomId)}` + '#' + hashParams.toString());
+    }
+
+    closeModal();
+
+    // switchRoom resets state and calls connect(), but we already have the crypto key set
+    // so we pass skipCrypto via a temporary flag to avoid re-running setupCryptoKey
+    const prevKey = roomCryptoKey;
+    const origSetup = window.__skipCryptoSetup;
+    window.__skipCryptoSetup = true;
+
+    // Reset state manually then call connect directly to avoid key overwrite
+    clearTimeout(reconnectTimer);
+    saveDraft();
+    currentRoomId = normalizeRoomId(roomId);
+    roomSwitchInProgress = true;
+    messages = [];
+    typingDrafts = [];
+    clientId = "";
+    pinnedMessageId = null;
+    setReplyingTo(null);
+    clearAttachment();
+    messageInput.value = "";
+    charCount.textContent = "0/50000";
+    renderMessages();
+    renderPinnedMessage();
+    renderTypingDrafts();
+    renderPeople([], 0);
+    updateOwnLivePreview();
+
+    if (socket && socket.readyState !== WebSocket.CLOSED) {
+      intentionalDisconnect = true;
+      socket.close();
+    }
+
+    // Restore key (switchRoom->connect would overwrite it)
+    roomCryptoKey = prevKey;
+    connect({ skipCrypto: true });
+
+    if (sidebar) sidebar.classList.remove('open');
+    if (sidebarOverlay) {
+      sidebarOverlay.classList.remove('active');
+      sidebarOverlay.classList.add('hidden');
+    }
+    showToast(password ? "🔐 Password-protected room created!" : "Private room is ready to share.");
+  };
+
+  const closeModal = () => {
+    pwModal.classList.add("hidden");
+    pwModal.setAttribute("aria-hidden", "true");
+    pwConfirm.removeEventListener("click", onConfirm);
+    pwCancel.removeEventListener("click", onCancel);
+    pwInput.removeEventListener("keydown", onKeydown);
+  };
+
+  const onConfirm = () => createRoom();
+  const onCancel = () => closeModal();
+  const onKeydown = (e) => { if (e.key === "Enter") createRoom(); if (e.key === "Escape") closeModal(); };
+
+  pwConfirm.addEventListener("click", onConfirm);
+  pwCancel.addEventListener("click", onCancel);
+  pwInput.addEventListener("keydown", onKeydown);
 });
 
 defaultRoomButton.addEventListener("click", () => {
