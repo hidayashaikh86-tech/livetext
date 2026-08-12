@@ -100,11 +100,13 @@ button {
   color: var(--ink);
   font-size: 0.85rem;
   font-weight: 500;
-  transition: background var(--transition);
+  border: 1px solid var(--line);
+  transition: all var(--transition);
 }
 
 .secondary-action:hover:not(:disabled) {
   background: var(--surface-hover);
+  border-color: #55556a;
 }
 
 .danger-button {
@@ -273,15 +275,15 @@ textarea {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
-  background: var(--surface-soft);
-  border-radius: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  border-radius: 6px;
   border: 1px solid transparent;
-  transition: border-color var(--transition);
+  transition: background var(--transition);
 }
 
 .person:hover {
-  border-color: var(--line);
+  background: var(--surface-hover);
 }
 
 .avatar {
