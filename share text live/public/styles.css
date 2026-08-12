@@ -463,7 +463,7 @@ textarea {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--border-radius);
-  padding: 16px;
+  padding: 12px 14px;
   box-shadow: var(--shadow-sm);
   animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
   position: relative;
@@ -482,8 +482,8 @@ textarea {
 .message-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .meta-text {
@@ -541,11 +541,11 @@ textarea {
 
 .message-text {
   font-size: 0.95rem;
-  line-height: 1.6;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
   color: #e2e2e8;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .expiry-row {
