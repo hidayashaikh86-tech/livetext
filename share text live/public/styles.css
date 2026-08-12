@@ -768,7 +768,8 @@ textarea {
 .message-text h3 { font-size: 1.1rem; }
 
 .message-text p {
-  margin-bottom: 0.8em;
+  margin-top: 0;
+  margin-bottom: 0.6em;
 }
 .message-text p:last-child {
   margin-bottom: 0;
