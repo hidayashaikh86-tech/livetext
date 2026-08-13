@@ -442,16 +442,58 @@ server.on("upgrade", (req, socket) => {
   });
   broadcastPresence(room.id);
 
-  let dataBuffer = Buffer.alloc(0);
+  let dataChunks = [];
+  let dataChunksLen = 0;
 
   socket.on("data", (chunk) => {
-    dataBuffer = Buffer.concat([dataBuffer, chunk]);
+    dataChunks.push(chunk);
+    dataChunksLen += chunk.length;
 
-    while (dataBuffer.length > 0) {
+    while (dataChunksLen > 0) {
+      if (dataChunksLen < 2) break;
+
+      // Extract up to 14 bytes of header to determine frame length
+      const header = Buffer.alloc(Math.min(14, dataChunksLen));
+      let hOffset = 0;
+      for (const c of dataChunks) {
+        const toCopy = Math.min(c.length, 14 - hOffset);
+        c.copy(header, hOffset, 0, toCopy);
+        hOffset += toCopy;
+        if (hOffset === 14) break;
+      }
+
+      let payloadLen = header[1] & 0x7f;
+      let frameHeaderLen = 2;
+
+      if (payloadLen === 126) {
+        if (dataChunksLen < 4) break;
+        payloadLen = header.readUInt16BE(frameHeaderLen);
+        frameHeaderLen += 2;
+      } else if (payloadLen === 127) {
+        if (dataChunksLen < 10) break;
+        const high = header.readUInt32BE(frameHeaderLen);
+        const low = header.readUInt32BE(frameHeaderLen + 4);
+        payloadLen = high * 2 ** 32 + low;
+        frameHeaderLen += 8;
+      }
+
+      const masked = (header[1] & 0x80) === 0x80;
+      if (masked) {
+        if (dataChunksLen < frameHeaderLen + 4) break;
+        frameHeaderLen += 4;
+      }
+
+      const totalFrameLength = frameHeaderLen + payloadLen;
+      if (dataChunksLen < totalFrameLength) break; // Wait for full frame
+
+      // We have a full frame! Concat to parse it
+      const dataBuffer = Buffer.concat(dataChunks);
       const parsed = tryParseFrame(dataBuffer);
-      if (!parsed) break; // Wait for more data
+      if (!parsed) break; // Should not happen given length check, but safe
 
-      dataBuffer = dataBuffer.subarray(parsed.bytesConsumed);
+      const remaining = dataBuffer.subarray(parsed.bytesConsumed);
+      dataChunks = remaining.length > 0 ? [remaining] : [];
+      dataChunksLen = remaining.length;
 
       if (parsed.frame.type === "close") {
         socket.end();
