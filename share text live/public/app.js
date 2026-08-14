@@ -119,7 +119,38 @@ function parseMarkdown(text) {
     markedRendererConfigured = true;
   }
   
-  const rawHtml = marked.parse(text || "", { breaks: true, gfm: true });
+  let processText = text || "";
+  
+  // Auto-detect Code Magic
+  if (processText && !processText.includes('```')) {
+    const codePatterns = [
+      /^\s*<!DOCTYPE html>/i,
+      /^\s*<html/i,
+      /^\s*<\?php/i,
+      /^\s*import\s+.*from/m,
+      /^\s*function\s+\w+\s*\(/m,
+      /^\s*const\s+\w+\s*=/m,
+      /^\s*let\s+\w+\s*=/m,
+      /^\s*class\s+\w+/m,
+      /^\s*def\s+\w+\s*\(/m,
+      /^\s*#include\s+</m,
+      /^\s*SELECT\s+.*\s+FROM/im
+    ];
+    let isCode = codePatterns.some(p => p.test(processText));
+    
+    if (!isCode && processText.split('\n').length > 2) {
+      const specialChars = (processText.match(/[{}[\]();=<>]/g) || []).length;
+      if (specialChars / processText.length > 0.06) {
+        isCode = true;
+      }
+    }
+    
+    if (isCode) {
+      processText = '```\n' + processText + '\n```';
+    }
+  }
+
+  const rawHtml = marked.parse(processText, { breaks: true, gfm: true });
   return DOMPurify.sanitize(rawHtml);
 }
 
