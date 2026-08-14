@@ -110,11 +110,20 @@ function parseMarkdown(text) {
     };
     const options = { renderer: renderer };
     if (window.hljs) {
-      options.highlight = function(code, lang) {
-        if (lang && hljs.getLanguage(lang)) {
-          return hljs.highlight(code, { language: lang }).value;
+      renderer.code = function(codeOrToken, lang) {
+        const code = typeof codeOrToken === 'string' ? codeOrToken : codeOrToken.text;
+        const language = typeof codeOrToken === 'string' ? (lang || '') : (codeOrToken.lang || '');
+        let highlighted;
+        try {
+          if (language && hljs.getLanguage(language)) {
+            highlighted = hljs.highlight(code, { language: language }).value;
+          } else {
+            highlighted = hljs.highlightAuto(code).value;
+          }
+        } catch(e) {
+          highlighted = String(code).replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
-        return hljs.highlightAuto(code).value;
+        return `<pre><code class="hljs ${language ? 'language-' + language : ''}">${highlighted}</code></pre>`;
       };
     }
     marked.setOptions(options);
