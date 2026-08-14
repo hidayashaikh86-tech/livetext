@@ -764,7 +764,26 @@ function renderMessages() {
       <h3 style="margin: 0 0 8px; color: var(--text);">Ready to share</h3>
       <p style="margin: 0; font-size: 0.9rem;">Drag and drop a file anywhere, or paste text to begin.</p>
     `;
+
+    if (currentRoomId === "public") {
+      empty.innerHTML += `
+        <button id="empty-state-private-btn" class="secondary-action" style="margin-top: 24px; display: inline-flex; align-items: center; gap: 8px; font-weight: 500;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Create Private Room
+        </button>
+      `;
+    }
+
     messagesEl.append(empty);
+
+    const privateBtn = document.getElementById("empty-state-private-btn");
+    if (privateBtn) {
+      privateBtn.addEventListener("click", () => {
+        const newRoomBtn = document.getElementById("new-room");
+        if (newRoomBtn) newRoomBtn.click();
+      });
+    }
+
     return;
   }
 
