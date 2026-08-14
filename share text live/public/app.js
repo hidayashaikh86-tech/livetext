@@ -104,8 +104,9 @@ function parseMarkdown(text) {
   
   if (!markedRendererConfigured) {
     const renderer = new marked.Renderer();
-    renderer.html = function(html) {
-      return html.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    renderer.html = function(token) {
+      const htmlStr = typeof token === 'string' ? token : (token.text || token.raw || "");
+      return String(htmlStr).replace(/</g, '&lt;').replace(/>/g, '&gt;');
     };
     const options = { renderer: renderer };
     if (window.hljs) {
