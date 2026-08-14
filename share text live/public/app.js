@@ -40,6 +40,13 @@ const qrModal = document.querySelector("#qr-modal");
 const closeQrModal = document.querySelector("#close-qr-modal");
 const qrcodeContainer = document.querySelector("#qrcode-container");
 
+if (launchNotice) {
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    launchNotice.innerHTML = `<strong>Open this app through the local server.</strong><span>Run <code>npm start</code>, then open <code>http://127.0.0.1:3000</code>.</span>`;
+    launchNotice.hidden = false;
+  }
+}
+
 // New elements for UI overhaul
 const sidebar = document.getElementById("sidebar");
 const toggleSidebarBtn = document.getElementById("toggle-sidebar");
@@ -105,6 +112,16 @@ let replyingToMessage = null;
 let currentAttachment = null;
 let pinnedMessageId = null;
 let roomCryptoKey = null;
+
+let renderTimeout;
+function debouncedRenderMessages(shouldScroll) {
+  clearTimeout(renderTimeout);
+  renderTimeout = setTimeout(() => {
+    renderMessages();
+    renderPinnedMessage();
+    if (shouldScroll) scrollToBottom();
+  }, 20);
+}
 
 // Helpers for scrolling
 function scrollToBottom() {
@@ -373,7 +390,7 @@ async function connect(options = {}) {
       nameInput.value = localStorage.getItem("shareTextLiveName") || payload.name;
       send({ type: "setName", name: nameInput.value });
       restoreDraft();
-      messages = payload.messages || [];
+      messages = [];
       typingDrafts = payload.drafts || [];
       pinnedMessageId = payload.pinnedMessageId || null;
       serverOffset = (payload.serverTime || Date.now()) - Date.now();
@@ -386,6 +403,11 @@ async function connect(options = {}) {
         roomSwitchInProgress = false;
         showToast(currentRoomId === "public" ? "You are back in the public room." : "Private room is ready to share.");
       }
+    }
+
+    if (payload.type === "history") {
+      messages.push(payload.message);
+      debouncedRenderMessages(isAtBottom);
     }
 
     if (payload.type === "messages") {
@@ -731,10 +753,13 @@ function renderMessages() {
 
   if (messages.length === 0) {
     const empty = document.createElement("div");
-    empty.className = "empty-state";
-    empty.textContent = currentRoomId === "public"
-      ? "No shared text yet. Start the public room with the first message."
-      : "This private room is empty. Share a message to start the conversation.";
+    empty.id = "empty-state";
+    empty.style.cssText = "text-align: center; margin: auto; padding: 40px 20px; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;";
+    empty.innerHTML = `
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px; opacity: 0.5;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+      <h3 style="margin: 0 0 8px; color: var(--text);">Ready to share</h3>
+      <p style="margin: 0; font-size: 0.9rem;">Drag and drop a file anywhere, or paste text to begin.</p>
+    `;
     messagesEl.append(empty);
     return;
   }

@@ -103,13 +103,14 @@
           <div class="invite-row">
             <input id="room-link" type="text" readonly />
             <button id="copy-link" type="button" class="btn-primary" data-default-label="Copy" style="flex-shrink: 0;">Copy</button>
-            <button id="show-qr-btn" type="button" class="btn-primary" aria-label="Show QR Code" title="Show QR Code" style="flex-shrink: 0; padding: 0 10px;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button id="show-qr-btn" type="button" class="btn-primary" aria-label="Show QR Code" title="Show QR Code" style="flex-shrink: 0; padding: 0 10px; display: flex; align-items: center; gap: 4px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="3" width="7" height="7"></rect>
                 <rect x="14" y="3" width="7" height="7"></rect>
                 <rect x="14" y="14" width="7" height="7"></rect>
                 <rect x="3" y="14" width="7" height="7"></rect>
               </svg>
+              QR Code
             </button>
           </div>
           <div class="room-actions">
@@ -136,6 +137,10 @@
 
         <!-- Footer / SEO text -->
         <div class="sidebar-footer">
+          <div style="margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: rgba(16, 185, 129, 0.1); color: #10b981; border-radius: 4px; font-size: 0.7rem; font-weight: 600;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> E2E Encrypted</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: rgba(99, 102, 241, 0.1); color: #6366f1; border-radius: 4px; font-size: 0.7rem; font-weight: 600;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg> Zero Knowledge</span>
+          </div>
           <p>
             <strong>About Shareli:</strong> Shareli is a secure, browser-based platform for sharing text, code, files and links across devices. No account required — create a room, share the link, and start transferring information instantly.
           </p>
@@ -171,7 +176,7 @@
           <div class="header-status">
             <div class="connection-card" aria-live="polite">
               <span id="status-dot" class="status-dot"></span>
-              <span id="connection-label" class="desktop-only">Connecting...</span>
+              <span id="connection-label" class="desktop-only">Secure Connection</span>
             </div>
             <div class="board-tools-dropdown">
                <button id="board-menu-btn" class="icon-button" aria-label="Room Options">
@@ -186,10 +191,7 @@
           </div>
         </header>
 
-        <section id="launch-notice" class="launch-notice" hidden>
-          <strong>Open this app through the local server.</strong>
-          <span>Run <code>npm start</code>, then open <code>http://127.0.0.1:3000</code>.</span>
-        </section>
+        <section id="launch-notice" class="launch-notice" hidden></section>
 
         <!-- Pinned Message Banner -->
         <div id="pinned-banner" class="pinned-banner hidden">
@@ -209,7 +211,13 @@
         <section class="board-panel" id="board-panel" aria-label="Shared messages">
           <div class="board-scroll-area" id="board-scroll-area">
              <div class="board-content">
-               <div id="messages" class="messages" aria-live="polite"></div>
+               <div id="messages" class="messages" aria-live="polite">
+                 <div id="empty-state" style="text-align: center; margin: auto; padding: 40px 20px; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px; opacity: 0.5;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                   <h3 style="margin: 0 0 8px; color: var(--text);">Ready to share</h3>
+                   <p style="margin: 0; font-size: 0.9rem;">Drag and drop a file anywhere, or paste text to begin.</p>
+                 </div>
+               </div>
                <div id="typing-previews" class="typing-previews" aria-live="polite"></div>
              </div>
           </div>

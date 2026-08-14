@@ -435,10 +435,17 @@ server.on("upgrade", (req, socket) => {
     clientId: id,
     roomId: room.id,
     name: client.name,
-    messages: activeMessages(room),
     drafts: activeTypingDrafts(room),
     pinnedMessageId: room.pinnedMessageId,
     serverTime: Date.now()
+  });
+
+  const historyMsgs = activeMessages(room);
+  historyMsgs.forEach(msg => {
+    sendJson(socket, {
+      type: "history",
+      message: msg
+    });
   });
   broadcastPresence(room.id);
 
