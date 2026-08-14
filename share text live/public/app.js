@@ -93,6 +93,35 @@ if (lightbox) {
   });
 }
 
+let markedRendererConfigured = false;
+
+function parseMarkdown(text) {
+  if (!window.marked || !window.DOMPurify) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  if (!markedRendererConfigured) {
+    const renderer = new marked.Renderer();
+    renderer.html = function(html) {
+      return html.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+    const options = { renderer: renderer };
+    if (window.hljs) {
+      options.highlight = function(code, lang) {
+        const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+        return hljs.highlight(code, { language }).value;
+      };
+    }
+    marked.setOptions(options);
+    markedRendererConfigured = true;
+  }
+  
+  const rawHtml = marked.parse(text || "", { breaks: true, gfm: true });
+  return DOMPurify.sanitize(rawHtml);
+}
+
 let socket;
 let clientId = "";
 let messages = [];
@@ -868,20 +897,7 @@ function renderMessages() {
       } catch (e) {}
     }
     
-    if (window.marked && window.DOMPurify) {
-      if (window.hljs) {
-        marked.setOptions({
-          highlight: function(code, lang) {
-            const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-            return hljs.highlight(code, { language }).value;
-          }
-        });
-      }
-      const rawHtml = marked.parse(messageContent || "", { breaks: true, gfm: true });
-      text.innerHTML = DOMPurify.sanitize(rawHtml);
-    } else {
-      text.textContent = messageContent;
-    }
+    text.innerHTML = parseMarkdown(messageContent);
     
     if (messageContent.trim().length > 0) {
       quickCopyBtn.classList.remove("hidden");
@@ -1072,11 +1088,7 @@ function renderTypingDrafts() {
     const text = document.createElement("p");
 
     heading.textContent = `${draft.authorName || "Guest"} is typing...`;
-    if (window.marked && window.DOMPurify) {
-      text.innerHTML = DOMPurify.sanitize(marked.parse(draft.text || "", { breaks: true, gfm: true }));
-    } else {
-      text.textContent = draft.text;
-    }
+    text.innerHTML = parseMarkdown(draft.text);
 
     body.append(heading, text);
     item.append(avatar, body);
@@ -1087,11 +1099,7 @@ function renderTypingDrafts() {
 function updateOwnLivePreview() {
   const text = messageInput.value.trim();
   livePreview.hidden = !text;
-  if (window.marked && window.DOMPurify) {
-    livePreviewText.innerHTML = DOMPurify.sanitize(marked.parse(text || "", { breaks: true, gfm: true }));
-  } else {
-    livePreviewText.textContent = text;
-  }
+  livePreviewText.innerHTML = parseMarkdown(text);
 }
 
 async function sendTypingSoon() {
