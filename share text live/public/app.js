@@ -2048,7 +2048,8 @@ function updateThemeLabel() {
 }
 
 if (themeToggle) {
-  themeToggle.addEventListener("click", () => {
+  themeToggle.addEventListener("click", (e) => {
+    e.stopPropagation();
     const isLight = document.documentElement.getAttribute("data-theme") === "light";
     const newTheme = isLight ? "dark" : "light";
     document.documentElement.setAttribute("data-theme", newTheme);
@@ -2078,7 +2079,8 @@ function updateNotifUI() {
 updateNotifUI();
 
 if (notifToggle) {
-  notifToggle.addEventListener("click", async () => {
+  notifToggle.addEventListener("click", async (e) => {
+    e.stopPropagation();
     if (!("Notification" in window)) {
       showToast("Your browser doesn't support notifications");
       return;
