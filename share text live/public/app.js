@@ -2037,7 +2037,15 @@ if (voiceRecCancel) {
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", "#f5f5f7");
   }
+  updateThemeLabel();
 })();
+
+function updateThemeLabel() {
+  const label = document.getElementById("theme-label");
+  if (!label) return;
+  const isLight = document.documentElement.getAttribute("data-theme") === "light";
+  label.textContent = isLight ? "Switch to dark mode" : "Switch to light mode";
+}
 
 if (themeToggle) {
   themeToggle.addEventListener("click", () => {
@@ -2047,22 +2055,24 @@ if (themeToggle) {
     localStorage.setItem("shareli-theme", newTheme);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", newTheme === "light" ? "#f5f5f7" : "#0d0d12");
+    updateThemeLabel();
   });
 }
 
 // ═══════════════════════════════════════════════
-//  BROWSER NOTIFICATIONS
+//  BROWSER NOTIFICATIONS (Privacy-Safe)
 // ═══════════════════════════════════════════════
 let notificationsEnabled = localStorage.getItem("shareli-notif") === "true";
 
 function updateNotifUI() {
   if (!notifToggle) return;
+  const notifLabel = document.getElementById("notif-label");
   if (notificationsEnabled && Notification.permission === "granted") {
     notifToggle.classList.add("notif-active");
-    notifToggle.title = "Notifications enabled";
+    if (notifLabel) notifLabel.textContent = "Disable notifications";
   } else {
     notifToggle.classList.remove("notif-active");
-    notifToggle.title = "Enable notifications";
+    if (notifLabel) notifLabel.textContent = "Enable notifications";
   }
 }
 updateNotifUI();
@@ -2091,28 +2101,17 @@ if (notifToggle) {
   });
 }
 
+// Privacy-safe: NEVER show message content in notifications.
+// This protects E2E encryption in public, private, and password-protected rooms.
+// Only shows "New secure message" — like Signal.
 function showBrowserNotification(message) {
   if (!notificationsEnabled) return;
   if (!document.hidden) return;
   if (Notification.permission !== "granted") return;
   if (message.authorId === clientId) return;
 
-  let body = "";
-  try {
-    const parsed = JSON.parse(message.text);
-    if (parsed.__v === 1) {
-      body = parsed.text || "Sent a file";
-      if (parsed.file && parsed.file.type && parsed.file.type.startsWith("audio/")) {
-        body = "🎙️ Voice Note";
-      }
-    }
-  } catch {
-    body = message.text || "";
-  }
-  if (body.length > 120) body = body.slice(0, 120) + "…";
-
-  const notif = new Notification(message.authorName || "Guest", {
-    body: body || "New message",
+  const notif = new Notification("Shareli", {
+    body: "New secure message received",
     icon: "/logo.jpg",
     tag: "shareli-" + message.id,
     silent: false

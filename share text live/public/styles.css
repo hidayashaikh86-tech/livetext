@@ -435,6 +435,26 @@ textarea {
   background: var(--surface-hover);
 }
 
+.dropdown-toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dropdown-toggle-item svg {
+  flex-shrink: 0;
+}
+
+.dropdown-toggle-item.notif-active {
+  color: var(--accent);
+}
+
+.dropdown-divider {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 4px 0;
+}
+
 /* Scroll Area for Messages */
 .board-panel {
   flex: 1;
@@ -1043,26 +1063,12 @@ textarea {
   }
 
   .header-status {
-    gap: 4px;
+    gap: 6px;
   }
 
   .connection-card {
     padding: 4px 8px;
     font-size: 0.72rem;
-  }
-
-  .connection-card #connection-label {
-    display: none;
-  }
-
-  .icon-button {
-    width: 32px;
-    height: 32px;
-  }
-
-  .icon-button svg {
-    width: 18px;
-    height: 18px;
   }
 }
 
