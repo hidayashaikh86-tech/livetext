@@ -367,7 +367,8 @@ textarea {
 .header-status {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .connection-card {
@@ -1040,6 +1041,29 @@ textarea {
   .composer-panel {
     padding: 12px;
   }
+
+  .header-status {
+    gap: 4px;
+  }
+
+  .connection-card {
+    padding: 4px 8px;
+    font-size: 0.72rem;
+  }
+
+  .connection-card #connection-label {
+    display: none;
+  }
+
+  .icon-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .icon-button svg {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 /* Ensure empty state looks good */
@@ -1593,4 +1617,58 @@ textarea {
 
 [data-theme="light"] #lightbox {
   background: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="light"] .expiry-row .expiry-bar {
+  background: #e5e7eb;
+}
+
+[data-theme="light"] .expiry-row .expiry-bar span {
+  background: var(--accent);
+}
+
+[data-theme="light"] .expires-label {
+  color: #6b7280;
+}
+
+[data-theme="light"] .connection-card {
+  background: #eeeef2;
+}
+
+[data-theme="light"] .toast {
+  background: #1a1a2e;
+  color: #ffffff;
+}
+
+[data-theme="light"] .pinned-banner {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: #d1d5db;
+}
+
+[data-theme="light"] .message-reply-context {
+  background: #f3f4f6;
+  border-left-color: var(--accent);
+}
+
+[data-theme="light"] .empty-state {
+  background: #ffffff;
+  border-color: #d1d5db;
+}
+
+[data-theme="light"] .attachment-preview {
+  background: #f3f4f6;
+}
+
+[data-theme="light"] .voice-note-player {
+  background: #f3f4f6;
+}
+
+[data-theme="light"] .reply-banner {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: #d1d5db;
+}
+
+[data-theme="light"] .typing-card {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
 }
