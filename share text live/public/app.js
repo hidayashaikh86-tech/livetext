@@ -940,7 +940,12 @@ function renderMessages() {
       } catch (e) {}
     }
     
-    text.innerHTML = parseMarkdown(messageContent);
+    // Hide text for voice notes (the player is the content)
+    if (attachmentData && attachmentData.type && attachmentData.type.startsWith("audio/")) {
+      text.innerHTML = '';
+    } else {
+      text.innerHTML = parseMarkdown(messageContent);
+    }
     
     if (messageContent.trim().length > 0) {
       quickCopyBtn.classList.remove("hidden");
@@ -1097,11 +1102,7 @@ function renderMessages() {
           timeCurrent.textContent = fmtTime(audio.currentTime);
         });
 
-        // Voice note icon label
-        const voiceIcon = document.createElement("div");
-        voiceIcon.className = "voice-note-icon";
-        voiceIcon.innerHTML = '🎙️ Voice Note';
-        attachmentContainer.appendChild(voiceIcon);
+
       } else {
         const fileBox = document.createElement("div");
         fileBox.className = "message-file-box";
@@ -1807,6 +1808,7 @@ let voiceRecStream = null;
 let voiceRecStartTime = 0;
 let voiceRecTimerInterval = null;
 let voiceRecMode = "idle"; // idle | recording
+let voiceRecCancelled = false;
 
 function formatRecTime(ms) {
   const totalSec = Math.floor(ms / 1000);
@@ -1841,7 +1843,7 @@ async function startVoiceRecording() {
   voiceRecorder = new MediaRecorder(voiceRecStream, { mimeType });
 
   voiceRecorder.addEventListener("dataavailable", (e) => {
-    if (e.data.size > 0) voiceRecChunks.push(e.data);
+    if (!voiceRecCancelled && e.data.size > 0) voiceRecChunks.push(e.data);
   });
 
   voiceRecorder.addEventListener("stop", async () => {
@@ -1859,6 +1861,13 @@ async function startVoiceRecording() {
     voiceRecBanner.classList.add("hidden");
     voiceNoteBtn.classList.remove("is-recording");
     voiceRecMode = "idle";
+
+    // If cancelled, discard everything
+    if (voiceRecCancelled) {
+      voiceRecChunks = [];
+      voiceRecCancelled = false;
+      return;
+    }
 
     if (voiceRecChunks.length === 0) return;
 
@@ -1977,8 +1986,9 @@ function stopVoiceRecording() {
 }
 
 function cancelVoiceRecording() {
+  voiceRecCancelled = true;
+  voiceRecChunks = [];
   if (voiceRecorder && voiceRecorder.state === "recording") {
-    voiceRecChunks = []; // Clear chunks so stop handler sends nothing
     voiceRecorder.stop();
   }
   if (voiceRecStream) {
