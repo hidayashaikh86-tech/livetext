@@ -5,7 +5,7 @@
     <!-- Ensure proper scaling on mobile and prevent zoom on focus -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
     <meta name="description" content="Shareli is a secure, real-time end-to-end encrypted chat room for instantly sharing text, code snippets, and large files. Create private, self-destructing, and anonymous chat links." />
-    <meta name="keywords" content="live text sharing, real time chat, secure chat, end-to-end encrypted messaging, e2ee file sharing, send code snippets, temporary pastebin, anonymous chat room, self destructing messages, private drop, secure paste, web chat, free secure file transfer, browser text sync, sharetext, shareli, sharli, sharely, sher text, share text live, shre text, live text, copy paste online, online clipboard, sync text across devices, cross platform text share, #securechat, #filesharing, #pastebin, #shareli" />
+    <meta name="keywords" content="live text sharing, real time chat, secure chat, end-to-end encrypted messaging, e2ee file sharing, send code snippets, temporary pastebin, anonymous chat room, self destructing messages, private drop, secure paste, web chat, free secure file transfer, browser text sync, sharetext, shareli, sharli, sharely, sher text, share text live, shre text, live text, copy paste online, online clipboard, sync text across devices, cross platform text share, share li, share li file share, share li file, share li text, #securechat, #filesharing, #pastebin, #shareli" />
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#0d0d12" />
     <link rel="canonical" href="https://shareli.online/" />
@@ -30,7 +30,7 @@
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "Shareli",
-      "alternateName": ["Share Text Live", "Shareli Online"],
+      "alternateName": ["Share Text Live", "Shareli Online", "Share li", "Share li File Share", "Share li Text"],
       "applicationCategory": "CommunicationApplication",
       "operatingSystem": "All",
       "offers": {
@@ -225,6 +225,19 @@
 
         <!-- Composer Area (Fixed Bottom) -->
         <section class="composer-panel" aria-label="Message composer">
+          <!-- Voice Recording Indicator -->
+          <div id="voice-recording-banner" class="voice-recording-banner hidden">
+            <div class="voice-recording-content">
+              <span class="voice-rec-dot"></span>
+              <span id="voice-rec-timer" class="voice-rec-timer">0:00</span>
+              <span class="voice-rec-label">Recording...</span>
+            </div>
+            <button id="voice-rec-cancel" class="voice-rec-cancel" type="button" aria-label="Cancel recording">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              Cancel
+            </button>
+          </div>
+
           <div id="attachment-preview" class="attachment-preview hidden">
             <span class="attachment-icon">📎</span>
             <span id="attachment-name"></span>
@@ -267,6 +280,14 @@
                  <input type="file" id="file-input" hidden>
                  <button id="attach-button" class="icon-button" type="button" aria-label="Attach file">
                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                 </button>
+                 <button id="voice-note-btn" class="icon-button" type="button" aria-label="Record voice note" title="Tap to record voice note">
+                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                     <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                     <line x1="12" y1="19" x2="12" y2="23"/>
+                     <line x1="8" y1="23" x2="16" y2="23"/>
+                   </svg>
                  </button>
                  <span id="char-count" class="char-count-pill">0/50000</span>
                  <button id="share-button" class="btn-primary icon-button" type="submit" disabled aria-label="Share">

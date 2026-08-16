@@ -1001,6 +1001,107 @@ function renderMessages() {
         wrapper.appendChild(img);
         wrapper.appendChild(dlBtn);
         attachmentContainer.appendChild(wrapper);
+      } else if (attachmentData.type.startsWith("audio/")) {
+        // Voice Note — custom inline audio player
+        const player = document.createElement("div");
+        player.className = "voice-note-player";
+
+        const playBtn = document.createElement("button");
+        playBtn.className = "voice-play-btn";
+        playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+
+        const progressWrap = document.createElement("div");
+        progressWrap.className = "voice-progress-wrap";
+
+        const progressBar = document.createElement("div");
+        progressBar.className = "voice-progress-bar";
+        const progressFill = document.createElement("div");
+        progressFill.className = "voice-progress-fill";
+        progressBar.appendChild(progressFill);
+
+        const timeLabel = document.createElement("div");
+        timeLabel.className = "voice-time-label";
+        const timeCurrent = document.createElement("span");
+        timeCurrent.textContent = "0:00";
+        const timeDuration = document.createElement("span");
+        timeDuration.textContent = "0:00";
+        timeLabel.append(timeCurrent, timeDuration);
+
+        progressWrap.append(progressBar, timeLabel);
+        player.append(playBtn, progressWrap);
+        attachmentContainer.appendChild(player);
+
+        // Audio element (hidden)
+        const audio = new Audio(attachmentData.data);
+        let isPlaying = false;
+        let animFrame = null;
+
+        const fmtTime = (s) => {
+          if (!isFinite(s)) return "0:00";
+          const m = Math.floor(s / 60);
+          const sec = Math.floor(s % 60);
+          return `${m}:${String(sec).padStart(2, "0")}`;
+        };
+
+        audio.addEventListener("loadedmetadata", () => {
+          if (audio.duration === Infinity) {
+            // WebM MediaRecorder duration bug workaround
+            audio.currentTime = Number.MAX_SAFE_INTEGER;
+            audio.ontimeupdate = () => {
+              audio.ontimeupdate = null;
+              audio.currentTime = 0;
+              timeDuration.textContent = fmtTime(audio.duration);
+            };
+          } else {
+            timeDuration.textContent = fmtTime(audio.duration);
+          }
+        });
+
+        const updateProgress = () => {
+          if (!audio.duration) return;
+          const pct = (audio.currentTime / audio.duration) * 100;
+          progressFill.style.width = pct + "%";
+          timeCurrent.textContent = fmtTime(audio.currentTime);
+          if (isPlaying) animFrame = requestAnimationFrame(updateProgress);
+        };
+
+        playBtn.addEventListener("click", () => {
+          if (isPlaying) {
+            audio.pause();
+            isPlaying = false;
+            cancelAnimationFrame(animFrame);
+            playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+          } else {
+            audio.play();
+            isPlaying = true;
+            playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+            updateProgress();
+          }
+        });
+
+        audio.addEventListener("ended", () => {
+          isPlaying = false;
+          cancelAnimationFrame(animFrame);
+          progressFill.style.width = "0%";
+          timeCurrent.textContent = "0:00";
+          playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+        });
+
+        // Click-to-seek on progress bar
+        progressBar.addEventListener("click", (e) => {
+          if (!audio.duration) return;
+          const rect = progressBar.getBoundingClientRect();
+          const pct = (e.clientX - rect.left) / rect.width;
+          audio.currentTime = pct * audio.duration;
+          progressFill.style.width = (pct * 100) + "%";
+          timeCurrent.textContent = fmtTime(audio.currentTime);
+        });
+
+        // Voice note icon label
+        const voiceIcon = document.createElement("div");
+        voiceIcon.className = "voice-note-icon";
+        voiceIcon.innerHTML = '🎙️ Voice Note';
+        attachmentContainer.appendChild(voiceIcon);
       } else {
         const fileBox = document.createElement("div");
         fileBox.className = "message-file-box";
@@ -1690,6 +1791,225 @@ if (clearRoomButton) {
 const savedExpiry = localStorage.getItem("share-text-live:expiry");
 if (savedExpiry && [...expirySelect.options].some((option) => option.value === savedExpiry)) {
   expirySelect.value = savedExpiry;
+}
+
+// ============================================
+// VOICE NOTES
+// ============================================
+const voiceNoteBtn = document.getElementById("voice-note-btn");
+const voiceRecBanner = document.getElementById("voice-recording-banner");
+const voiceRecTimer = document.getElementById("voice-rec-timer");
+const voiceRecCancel = document.getElementById("voice-rec-cancel");
+
+let voiceRecorder = null;
+let voiceRecChunks = [];
+let voiceRecStream = null;
+let voiceRecStartTime = 0;
+let voiceRecTimerInterval = null;
+let voiceRecMode = "idle"; // idle | recording
+
+function formatRecTime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}:${String(sec).padStart(2, "0")}`;
+}
+
+function updateRecTimer() {
+  if (voiceRecStartTime) {
+    voiceRecTimer.textContent = formatRecTime(Date.now() - voiceRecStartTime);
+  }
+}
+
+async function startVoiceRecording() {
+  if (voiceRecMode === "recording") return;
+
+  try {
+    voiceRecStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    showToast("🎙️ Microphone access denied. Please allow mic access in browser settings.");
+    return;
+  }
+
+  voiceRecChunks = [];
+  const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+    ? "audio/webm;codecs=opus"
+    : MediaRecorder.isTypeSupported("audio/webm")
+      ? "audio/webm"
+      : "audio/mp4";
+
+  voiceRecorder = new MediaRecorder(voiceRecStream, { mimeType });
+
+  voiceRecorder.addEventListener("dataavailable", (e) => {
+    if (e.data.size > 0) voiceRecChunks.push(e.data);
+  });
+
+  voiceRecorder.addEventListener("stop", async () => {
+    // Stop all mic tracks
+    if (voiceRecStream) {
+      voiceRecStream.getTracks().forEach(t => t.stop());
+      voiceRecStream = null;
+    }
+
+    // Clear timer
+    clearInterval(voiceRecTimerInterval);
+    voiceRecTimerInterval = null;
+
+    // Hide banner
+    voiceRecBanner.classList.add("hidden");
+    voiceNoteBtn.classList.remove("is-recording");
+    voiceRecMode = "idle";
+
+    if (voiceRecChunks.length === 0) return;
+
+    const blob = new Blob(voiceRecChunks, { type: voiceRecorder.mimeType });
+    voiceRecChunks = [];
+
+    // Check minimum duration (< 0.5s is probably accidental)
+    const durationMs = Date.now() - voiceRecStartTime;
+    if (durationMs < 500) {
+      showToast("Recording too short. Hold longer to record.");
+      return;
+    }
+
+    // Check file size (3MB limit like other attachments)
+    if (blob.size > 3 * 1024 * 1024) {
+      showToast("Voice note too long! Maximum 3MB. Try a shorter recording.");
+      return;
+    }
+
+    // Convert to data URL
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    // Determine file extension
+    const ext = voiceRecorder.mimeType.includes("webm") ? "webm" : "m4a";
+    const durationSec = Math.round(durationMs / 1000);
+
+    // Package as file attachment (reuse existing protocol)
+    const payloadData = JSON.stringify({
+      __v: 1,
+      text: `🎙️ Voice Note (${formatRecTime(durationMs)})`,
+      file: {
+        name: `voice-note-${Date.now()}.${ext}`,
+        type: voiceRecorder.mimeType,
+        data: dataUrl
+      }
+    });
+
+    // Show sending state
+    const originalBtnContent = shareButton.innerHTML;
+    shareButton.innerHTML = "Sending...";
+    shareButton.disabled = true;
+    await new Promise(r => setTimeout(r, 15));
+
+    // Encrypt and send
+    const encryptedText = await encryptText(payloadData);
+    const payload = {
+      type: "create",
+      text: encryptedText,
+      expiresInMs: Number(expirySelect.value)
+    };
+
+    if (!send(payload)) {
+      showToast("⚠️ Waiting for connection before sending voice note.");
+      shareButton.innerHTML = originalBtnContent;
+      shareButton.disabled = false;
+      return;
+    }
+
+    // Optimistic message
+    const now = Date.now();
+    const pendingId = "temp-voice-" + now + "-" + Math.random().toString(36).slice(2);
+    const tempMessage = {
+      id: pendingId,
+      text: payloadData,
+      authorId: clientId,
+      authorName: nameInput.value || localStorage.getItem("shareTextLiveName") || "You",
+      authorColor: myColor,
+      replyTo: null,
+      createdAt: now,
+      updatedAt: now,
+      expiresAt: null,
+      isPending: true
+    };
+    pendingMessages.set(pendingId, tempMessage);
+    messages.push(tempMessage);
+    renderMessages();
+
+    setTimeout(() => {
+      if (!pendingMessages.has(pendingId)) return;
+      const msg = pendingMessages.get(pendingId);
+      if (msg) {
+        msg.isFailed = true;
+        msg.isPending = false;
+        renderMessages();
+      }
+    }, 60000);
+
+    shareButton.innerHTML = originalBtnContent;
+    shareButton.disabled = false;
+    updateSendState();
+    showToast("🎙️ Voice note sent!");
+    setTimeout(scrollToBottom, 50);
+  });
+
+  // Start recording
+  voiceRecorder.start();
+  voiceRecStartTime = Date.now();
+  voiceRecMode = "recording";
+
+  // Show UI
+  voiceNoteBtn.classList.add("is-recording");
+  voiceRecBanner.classList.remove("hidden");
+  voiceRecTimer.textContent = "0:00";
+  voiceRecTimerInterval = setInterval(updateRecTimer, 200);
+}
+
+function stopVoiceRecording() {
+  if (voiceRecorder && voiceRecorder.state === "recording") {
+    voiceRecorder.stop();
+  }
+}
+
+function cancelVoiceRecording() {
+  if (voiceRecorder && voiceRecorder.state === "recording") {
+    voiceRecChunks = []; // Clear chunks so stop handler sends nothing
+    voiceRecorder.stop();
+  }
+  if (voiceRecStream) {
+    voiceRecStream.getTracks().forEach(t => t.stop());
+    voiceRecStream = null;
+  }
+  clearInterval(voiceRecTimerInterval);
+  voiceRecTimerInterval = null;
+  voiceRecBanner.classList.add("hidden");
+  voiceNoteBtn.classList.remove("is-recording");
+  voiceRecMode = "idle";
+  showToast("Recording cancelled.");
+}
+
+if (voiceNoteBtn) {
+  // Tap-to-record / tap-to-stop mode (works for both desktop and mobile)
+  voiceNoteBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (voiceRecMode === "idle") {
+      startVoiceRecording();
+    } else if (voiceRecMode === "recording") {
+      stopVoiceRecording();
+    }
+  });
+}
+
+if (voiceRecCancel) {
+  voiceRecCancel.addEventListener("click", (e) => {
+    e.preventDefault();
+    cancelVoiceRecording();
+  });
 }
 
 connect();
