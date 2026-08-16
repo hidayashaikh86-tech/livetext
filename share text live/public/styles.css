@@ -21,6 +21,26 @@
   --header-height: 64px;
 }
 
+[data-theme="light"] {
+  color-scheme: light;
+  --canvas: #f5f5f7;
+  --surface: #ffffff;
+  --surface-soft: #eeeef2;
+  --surface-hover: #e4e4ea;
+  --ink: #1a1a2e;
+  --muted: #6b7280;
+  --line: #d1d5db;
+  --accent: #6366f1;
+  --accent-strong: #4f46e5;
+  --accent-soft: rgba(99, 102, 241, 0.1);
+  --warning: #d97706;
+  --warning-soft: rgba(217, 119, 6, 0.1);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.1);
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -1480,4 +1500,97 @@ textarea {
     padding: 4px 6px;
     font-size: 0.7rem;
   }
+}
+
+/* Theme Toggle */
+.theme-toggle {
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-toggle svg {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.theme-toggle .icon-moon { display: none; }
+[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+[data-theme="light"] .theme-toggle .icon-moon { display: inline-block; }
+
+/* Notification Bell */
+.notif-toggle.notif-active {
+  color: var(--accent);
+}
+
+.notif-toggle.notif-active svg {
+  filter: drop-shadow(0 0 4px var(--accent));
+}
+
+/* Light mode specific overrides */
+[data-theme="light"] .composer-panel {
+  background: rgba(245, 245, 247, 0.9);
+}
+
+[data-theme="light"] .people-panel {
+  background: #ffffff;
+}
+
+[data-theme="light"] .topbar {
+  background: rgba(245, 245, 247, 0.9);
+}
+
+[data-theme="light"] body {
+  background: #f5f5f7;
+}
+
+[data-theme="light"] .message-card {
+  background: #ffffff;
+  border-color: #e5e7eb;
+}
+
+[data-theme="light"] .msg-dropdown {
+  background: #ffffff;
+  border-color: #e5e7eb;
+}
+
+[data-theme="light"] .msg-dropdown button:hover {
+  background: #f3f4f6;
+}
+
+[data-theme="light"] .dropdown-menu {
+  background: #ffffff;
+  border-color: #e5e7eb;
+}
+
+[data-theme="light"] .dropdown-menu button:hover {
+  background: #f3f4f6;
+}
+
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #1a1a2e;
+}
+
+[data-theme="light"] .room-chip {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+[data-theme="light"] .voice-recording-banner {
+  background: rgba(245, 245, 247, 0.95);
+}
+
+[data-theme="light"] #pw-modal .modal-content {
+  background: #ffffff;
+  border-color: #e5e7eb;
+}
+
+[data-theme="light"] #qr-modal .modal-content {
+  background: #ffffff;
+  border-color: #e5e7eb;
+}
+
+[data-theme="light"] #lightbox {
+  background: rgba(0, 0, 0, 0.6);
 }

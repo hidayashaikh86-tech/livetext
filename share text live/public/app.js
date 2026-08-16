@@ -40,6 +40,10 @@ const qrModal = document.querySelector("#qr-modal");
 const closeQrModal = document.querySelector("#close-qr-modal");
 const qrcodeContainer = document.querySelector("#qrcode-container");
 
+// Theme & Notification Elements
+const themeToggle = document.getElementById("theme-toggle");
+const notifToggle = document.getElementById("notif-toggle");
+
 if (launchNotice) {
   if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
     launchNotice.innerHTML = `<strong>Open this app through the local server.</strong><span>Run <code>npm start</code>, then open <code>http://127.0.0.1:3000</code>.</span>`;
@@ -505,6 +509,7 @@ async function connect(options = {}) {
         }
       }
       if (!matched) messages.push(payload.message);
+      showBrowserNotification(payload.message);
       renderMessages();
       if (isAtBottom) scrollToBottom();
     }
@@ -2020,6 +2025,105 @@ if (voiceRecCancel) {
     e.preventDefault();
     cancelVoiceRecording();
   });
+}
+
+// ═══════════════════════════════════════════════
+//  THEME TOGGLE (Dark / Light Mode)
+// ═══════════════════════════════════════════════
+(function initTheme() {
+  const saved = localStorage.getItem("shareli-theme");
+  if (saved === "light") {
+    document.documentElement.setAttribute("data-theme", "light");
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", "#f5f5f7");
+  }
+})();
+
+if (themeToggle) {
+  themeToggle.addEventListener("click", () => {
+    const isLight = document.documentElement.getAttribute("data-theme") === "light";
+    const newTheme = isLight ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", newTheme);
+    localStorage.setItem("shareli-theme", newTheme);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", newTheme === "light" ? "#f5f5f7" : "#0d0d12");
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  BROWSER NOTIFICATIONS
+// ═══════════════════════════════════════════════
+let notificationsEnabled = localStorage.getItem("shareli-notif") === "true";
+
+function updateNotifUI() {
+  if (!notifToggle) return;
+  if (notificationsEnabled && Notification.permission === "granted") {
+    notifToggle.classList.add("notif-active");
+    notifToggle.title = "Notifications enabled";
+  } else {
+    notifToggle.classList.remove("notif-active");
+    notifToggle.title = "Enable notifications";
+  }
+}
+updateNotifUI();
+
+if (notifToggle) {
+  notifToggle.addEventListener("click", async () => {
+    if (!("Notification" in window)) {
+      showToast("Your browser doesn't support notifications");
+      return;
+    }
+    if (notificationsEnabled) {
+      notificationsEnabled = false;
+      localStorage.setItem("shareli-notif", "false");
+      showToast("Notifications disabled");
+    } else {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        notificationsEnabled = true;
+        localStorage.setItem("shareli-notif", "true");
+        showToast("Notifications enabled!");
+      } else {
+        showToast("Notification permission denied");
+      }
+    }
+    updateNotifUI();
+  });
+}
+
+function showBrowserNotification(message) {
+  if (!notificationsEnabled) return;
+  if (!document.hidden) return;
+  if (Notification.permission !== "granted") return;
+  if (message.authorId === clientId) return;
+
+  let body = "";
+  try {
+    const parsed = JSON.parse(message.text);
+    if (parsed.__v === 1) {
+      body = parsed.text || "Sent a file";
+      if (parsed.file && parsed.file.type && parsed.file.type.startsWith("audio/")) {
+        body = "🎙️ Voice Note";
+      }
+    }
+  } catch {
+    body = message.text || "";
+  }
+  if (body.length > 120) body = body.slice(0, 120) + "…";
+
+  const notif = new Notification(message.authorName || "Guest", {
+    body: body || "New message",
+    icon: "/logo.jpg",
+    tag: "shareli-" + message.id,
+    silent: false
+  });
+
+  notif.onclick = () => {
+    window.focus();
+    notif.close();
+  };
+
+  setTimeout(() => notif.close(), 5000);
 }
 
 connect();
