@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Shareli now supports End-to-End Encrypted Voice Notes. Send self-destructing voice messages directly from your browser with zero data retention." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://shareli.online/blog/encrypted-voice-notes.html" />
+  <meta property="og:title" content="Introducing End-to-End Encrypted Voice Notes | Shareli" />
+  <meta property="og:description" content="Record, encrypt, and send voice notes securely without leaving your browser. Everything self-destructs and is fully end-to-end encrypted." />
+  <meta property="og:url" content="https://shareli.online/blog/encrypted-voice-notes.html" />
+  <meta property="og:type" content="article" />
+  <title>Introducing End-to-End Encrypted Voice Notes | Shareli</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .page-wrap { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+    .page-nav a { color: var(--muted); text-decoration: none; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 48px; }
+    .page-nav a:hover { color: var(--ink); }
+    .post-meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 16px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .post-tag { background: var(--accent-soft); color: var(--accent-strong); border-radius: 6px; padding: 2px 8px; font-weight: 500; }
+    h1 { font-size: clamp(1.7rem, 5vw, 2.3rem); font-weight: 800; line-height: 1.2; margin-bottom: 20px; color: var(--ink); }
+    .lead { font-size: 1.1rem; line-height: 1.75; color: var(--muted); margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--line); }
+    h2 { font-size: 1.2rem; font-weight: 700; color: var(--ink); margin: 36px 0 12px; }
+    p { line-height: 1.8; color: var(--muted); margin-bottom: 16px; font-size: 0.97rem; }
+    ol, ul { padding-left: 22px; margin-bottom: 16px; }
+    li { line-height: 1.75; color: var(--muted); margin-bottom: 8px; font-size: 0.97rem; }
+    strong { color: var(--ink); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .cta-box { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 14px; padding: 28px; margin: 40px 0; text-align: center; }
+    .cta-box p { color: var(--ink); font-weight: 600; margin-bottom: 12px; }
+    .cta-box a { background: var(--accent); color: #fff; padding: 10px 24px; border-radius: 8px; font-weight: 600; display: inline-block; }
+    .page-footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; }
+    .page-footer a { color: var(--muted); text-decoration: none; }
+    .page-footer a:hover { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <main class="page-wrap">
+    <nav class="page-nav">
+      <a href="/blog.html">← Shareli Blog</a>
+    </nav>
+
+    <div class="post-meta">
+      <span>August 2026</span>
+      <span class="post-tag">Product Update</span>
+      <span class="post-tag">Features</span>
+    </div>
+
+    <h1>Introducing End-to-End Encrypted Voice Notes</h1>
+
+    <p class="lead">Sometimes, typing isn't fast enough, and text doesn't capture the nuance of a conversation. That's why today, we're incredibly excited to introduce <strong>End-to-End Encrypted Voice Notes</strong> to Shareli. You can now record and send secure, self-destructing audio messages directly from your browser, without installing any apps.</p>
+
+    <h2>Why Voice Notes?</h2>
+    <p>Shareli was built to be the fastest way to share information securely. We started with text and code snippets, then added large file sharing. However, we realized that one of the most common ways people communicate on the go is through voice messages. Whether you're explaining a complex problem to a coworker, or just saying hello to a friend, voice notes are incredibly convenient.</p>
+    <p>But convenience often comes at the cost of privacy. Traditional voice messaging platforms store your voice recordings on their servers, often unencrypted. We wanted to build a voice messaging system that respected your privacy as much as our text sharing does.</p>
+
+    <h2>How It Works: Security First</h2>
+    <p>When you record a voice note on Shareli, the audio is processed entirely on your device. Just like your text messages and file uploads, the voice note is encrypted locally in your browser using military-grade AES-GCM encryption before it ever touches our servers.</p>
+    <ul>
+      <li><strong>Client-Side Encryption:</strong> The encryption key is generated in your URL hash. Our servers never see the key, which means we can never decrypt or listen to your voice notes.</li>
+      <li><strong>Self-Destructing:</strong> You control how long the voice note lives. Select an expiry time (from 10 seconds to 6 hours), and once that timer runs out, the encrypted audio file is permanently deleted from our servers. No backups, no traces.</li>
+      <li><strong>Zero Dependencies:</strong> It works entirely in your web browser utilizing modern Web Audio APIs. There is no need to download a standalone app or browser extension.</li>
+    </ul>
+
+    <h2>How to Use Voice Notes</h2>
+    <ol>
+      <li>Open a secure room on <a href="/">shareli.online</a>.</li>
+      <li>Click or tap the new <strong>microphone icon</strong> in the message composer.</li>
+      <li>Speak your message. You'll see a live pulse animation showing that you're recording.</li>
+      <li>When you're done, hit the send button. If you change your mind, you can hit the cancel button to discard the recording securely.</li>
+      <li>Your encrypted voice note is instantly synced to everyone else in the room.</li>
+    </ol>
+    <p>It's that simple. Secure, fast, and completely anonymous.</p>
+
+    <h2>Available Now</h2>
+    <p>Encrypted Voice Notes are live today for all Shareli users across all modern desktop and mobile browsers. Give it a try the next time you need to share a quick update securely.</p>
+
+    <div class="cta-box">
+      <p>Try sending your first encrypted voice note right now.</p>
+      <a href="/">Open Shareli →</a>
+    </div>
+
+    <footer class="page-footer">
+      <a href="/">Home</a>
+      <a href="/about.html">About</a>
+      <a href="/faq.html">FAQ</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </footer>
+  </main>
+</body>
+</html>
