@@ -1672,3 +1672,143 @@ textarea {
   background: #f3f4f6;
   border-color: #e5e7eb;
 }
+
+/* Light mode: Icon buttons visibility */
+[data-theme="light"] .icon-button {
+  color: #4b5563;
+}
+
+[data-theme="light"] .icon-button:hover {
+  color: #1a1a2e;
+  background: #e5e7eb;
+}
+
+/* Light mode: Message text readability */
+[data-theme="light"] .message-text {
+  color: #1a1a2e;
+}
+
+[data-theme="light"] .message-text p {
+  color: #1a1a2e;
+}
+
+[data-theme="light"] .message-card .author {
+  color: #1a1a2e;
+}
+
+[data-theme="light"] .message-card .timestamp {
+  color: #6b7280;
+}
+
+/* Light mode: Send button */
+[data-theme="light"] #share-button {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+[data-theme="light"] #share-button svg {
+  stroke: #ffffff;
+}
+
+/* Light mode: Sidebar */
+[data-theme="light"] .sidebar-header {
+  border-bottom-color: #e5e7eb;
+}
+
+[data-theme="light"] .people-panel label,
+[data-theme="light"] .people-panel p,
+[data-theme="light"] .people-panel span {
+  color: #4b5563;
+}
+
+[data-theme="light"] .people-panel strong,
+[data-theme="light"] .people-panel h2,
+[data-theme="light"] .people-panel h3 {
+  color: #1a1a2e;
+}
+
+[data-theme="light"] .people-panel .sidebar-footer {
+  border-top-color: #e5e7eb;
+}
+
+[data-theme="light"] .people-panel .sidebar-footer a {
+  color: #6b7280;
+}
+
+/* Light mode: Notification bell & theme toggle */
+[data-theme="light"] .notif-toggle {
+  color: #6b7280;
+}
+
+[data-theme="light"] .notif-toggle:hover {
+  color: #1a1a2e;
+}
+
+[data-theme="light"] .theme-toggle {
+  color: #6b7280;
+}
+
+[data-theme="light"] .theme-toggle:hover {
+  color: #1a1a2e;
+}
+
+/* Light mode: Quick copy & menu buttons on message cards */
+[data-theme="light"] .quick-copy-btn,
+[data-theme="light"] .quick-download-btn,
+[data-theme="light"] .msg-menu-btn {
+  color: #9ca3af;
+}
+
+[data-theme="light"] .quick-copy-btn:hover,
+[data-theme="light"] .quick-download-btn:hover,
+[data-theme="light"] .msg-menu-btn:hover {
+  color: #4b5563;
+  background: #e5e7eb;
+}
+
+/* Light mode: Composer area */
+[data-theme="light"] .message-input-wrapper textarea {
+  color: #1a1a2e;
+}
+
+[data-theme="light"] .message-input-wrapper textarea::placeholder {
+  color: #9ca3af;
+}
+
+[data-theme="light"] .char-count-pill {
+  background: #eeeef2;
+  color: #6b7280;
+}
+
+/* Light mode: Buttons */
+[data-theme="light"] .btn-primary {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+[data-theme="light"] .secondary-action {
+  background: #eeeef2;
+  color: #4b5563;
+}
+
+[data-theme="light"] .secondary-action:hover {
+  background: #e5e7eb;
+}
+
+/* Light mode: Code blocks in messages */
+[data-theme="light"] .message-text pre {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+}
+
+[data-theme="light"] .message-text code {
+  background: #f3f4f6;
+  color: #e11d48;
+}
+
+/* Light mode: File attachment cards */
+[data-theme="light"] .message-file-box {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+}
+
