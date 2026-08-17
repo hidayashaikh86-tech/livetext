@@ -1324,18 +1324,22 @@ async function processFile(file) {
     return;
   }
   
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    currentAttachment = {
-      name: file.name || "Pasted Image",
-      type: file.type || "application/octet-stream",
-      data: e.target.result // base64 data url
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      currentAttachment = {
+        name: file.name || "Pasted Image",
+        type: file.type || "application/octet-stream",
+        data: e.target.result // base64 data url
+      };
+      if (attachmentPreview) attachmentPreview.classList.remove("hidden");
+      if (attachmentName) attachmentName.textContent = currentAttachment.name;
+      updateSendState();
+      resolve();
     };
-    if (attachmentPreview) attachmentPreview.classList.remove("hidden");
-    if (attachmentName) attachmentName.textContent = currentAttachment.name;
-    updateSendState();
-  };
-  reader.readAsDataURL(file);
+    reader.onerror = () => resolve(); // prevent hanging on error
+    reader.readAsDataURL(file);
+  });
 }
 
 function clearAttachment() {
