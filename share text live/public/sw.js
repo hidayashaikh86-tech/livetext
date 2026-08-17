@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shareli-cache-v4';
+const CACHE_NAME = 'shareli-cache-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -103,6 +103,25 @@ self.addEventListener('fetch', (event) => {
         });
         return networkResponse;
       });
+    })
+  );
+});
+
+// Notification click handler — brings the app tab into focus
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If a Shareli tab is already open, focus it
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open a new tab
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
     })
   );
 });

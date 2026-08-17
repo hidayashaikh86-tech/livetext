@@ -1346,12 +1346,44 @@ function clearAttachment() {
 
 if (attachButton && fileInput) {
   attachButton.addEventListener("click", () => fileInput.click());
+
+  // Prevent Enter on the attach button from re-opening file picker
+  // Instead, submit the form (send the message) if ready
+  attachButton.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (!shareButton.disabled) {
+        messageForm.requestSubmit();
+      }
+    }
+  });
   
   fileInput.addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    await processFile(file);
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    if (files.length === 1) {
+      // Single file: attach normally, let user add text and press send
+      await processFile(files[0]);
+    } else {
+      // Multiple files: send each as a separate message immediately
+      for (const file of files) {
+        if (file.size > 3 * 1024 * 1024) {
+          showToast(`"${file.name}" is too large (max 3MB), skipped.`);
+          continue;
+        }
+        await processFile(file);
+        // Auto-submit with current attachment
+        if (currentAttachment) {
+          messageForm.requestSubmit();
+          // Small delay between sends to avoid flooding
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+    }
+
     fileInput.value = ""; // Reset
+    messageInput.focus(); // Move focus to text input so Enter sends
   });
 }
 
@@ -1405,7 +1437,22 @@ document.addEventListener("drop", async (e) => {
   e.stopPropagation();
   if (dragOverlay) dragOverlay.classList.add("hidden");
   if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-    await processFile(e.dataTransfer.files[0]);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 1) {
+      await processFile(files[0]);
+    } else {
+      for (const file of files) {
+        if (file.size > 3 * 1024 * 1024) {
+          showToast(`"${file.name}" is too large (max 3MB), skipped.`);
+          continue;
+        }
+        await processFile(file);
+        if (currentAttachment) {
+          messageForm.requestSubmit();
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+    }
   }
 });
 
@@ -2105,39 +2152,54 @@ if (notifToggle) {
 
 // Privacy-safe: NEVER show message content in notifications.
 // This protects E2E encryption in public, private, and password-protected rooms.
-// Only shows "New secure message" — like Signal.
-function showBrowserNotification(message) {
+// Uses ServiceWorker notification API which works on both desktop AND mobile.
+async function showBrowserNotification(message) {
   if (!notificationsEnabled) return;
   if (!document.hidden) return;
   if (Notification.permission !== "granted") return;
   if (message.authorId === clientId) return;
 
-  const notif = new Notification("Shareli", {
+  const options = {
     body: "New secure message received",
     icon: "/logo.jpg",
+    badge: "/logo.jpg",
     tag: "shareli-" + message.id,
-    silent: false
-  });
-
-  notif.onclick = () => {
-    window.focus();
-    notif.close();
+    renotify: true,
+    requireInteraction: false
   };
 
-  setTimeout(() => notif.close(), 5000);
+  try {
+    // Use Service Worker notification (works on mobile + desktop)
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification("Shareli", options);
+      return;
+    }
+
+    // Fallback: try direct Notification constructor (desktop only)
+    if (typeof Notification !== "undefined") {
+      const notif = new Notification("Shareli", options);
+      notif.onclick = () => {
+        window.focus();
+        notif.close();
+      };
+      setTimeout(() => notif.close(), 5000);
+    }
+  } catch (err) {
+    console.warn("Notification failed:", err);
+  }
 }
 
 connect();
 setInterval(updateCountdowns, 1000);
 
-// Register Service Worker for PWA
+// Register Service Worker for PWA + Notifications
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-      }, (err) => {
-        console.log('ServiceWorker registration failed: ', err);
-      });
-  });
+  navigator.serviceWorker.register('/sw.js')
+    .then((registration) => {
+      console.log('ServiceWorker registered:', registration.scope);
+    })
+    .catch((err) => {
+      console.warn('ServiceWorker registration failed:', err);
+    });
 }
