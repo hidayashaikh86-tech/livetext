@@ -393,6 +393,9 @@ function handleClientAction(client, action) {
   }
 
   if (action.type === "clear") {
+    if (room.id === "public") return; // Public room cannot be cleared
+    if (room.adminToken && !client.isAdmin) return; // Only admin can clear private rooms with an admin
+
     if (room.messages.length === 0) return;
 
     room.messages.length = 0;
@@ -528,7 +531,8 @@ server.on("upgrade", (req, socket) => {
     drafts: activeTypingDrafts(room),
     pinnedMessageId: room.pinnedMessageId,
     serverTime: Date.now(),
-    isAdmin: client.isAdmin
+    isAdmin: client.isAdmin,
+    hasAdmin: !!room.adminToken
   });
 
   const historyMsgs = activeMessages(room);

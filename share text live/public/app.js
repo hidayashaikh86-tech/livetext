@@ -502,6 +502,17 @@ async function connect(options = {}) {
       isAdmin = !!payload.isAdmin;
       currentRoomId = payload.roomId || currentRoomId;
       updateRoomUi();
+      
+      if (clearRoomButton) {
+        if (currentRoomId === "public") {
+          clearRoomButton.style.display = 'none';
+        } else if (payload.hasAdmin && !isAdmin) {
+          clearRoomButton.style.display = 'none';
+        } else {
+          clearRoomButton.style.display = '';
+        }
+      }
+
       nameInput.value = localStorage.getItem("shareTextLiveName") || payload.name;
       send({ type: "setName", name: nameInput.value });
       restoreDraft();
