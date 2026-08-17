@@ -451,8 +451,19 @@ async function connect(options = {}) {
   }
 
   const protocol = location.protocol === "https:" ? "wss" : "ws";
-  const roomQuery = currentRoomId === "public" ? "" : `?room=${encodeURIComponent(currentRoomId)}`;
-  socket = new WebSocket(`${protocol}://${location.host}/${roomQuery}`);
+  
+  let sessionId = localStorage.getItem("shareli_session_id");
+  if (!sessionId) {
+    sessionId = "local-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem("shareli_session_id", sessionId);
+  }
+
+  const queryParams = new URLSearchParams();
+  if (currentRoomId !== "public") queryParams.set("room", currentRoomId);
+  queryParams.set("sessionId", sessionId);
+
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  socket = new WebSocket(`${protocol}://${location.host}/${queryString}`);
 
   isConnected = false;
   updateSendState();

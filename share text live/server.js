@@ -489,7 +489,8 @@ server.on("upgrade", (req, socket) => {
 
   const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
   const room = getRoom(requestUrl.searchParams.get("room"));
-  const id = crypto.randomUUID();
+  const sessionId = requestUrl.searchParams.get("sessionId");
+  const id = sessionId ? crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16) : crypto.randomUUID();
   const client = {
     id,
     socket,
