@@ -7,7 +7,7 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'no-referrer',
-  'Permissions-Policy': 'camera=(self), microphone=(), geolocation=()',
+  'Permissions-Policy': 'camera=(self), microphone=(self), geolocation=()',
   'X-XSS-Protection': '1; mode=block',
   'Content-Security-Policy': "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' wss: ws: data: blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; media-src 'self' data: blob:;"
 };
@@ -439,7 +439,14 @@ function serveFile(req, res) {
     }
 
     const contentType = mimeTypes[path.extname(filePath)] || "application/octet-stream";
-    res.writeHead(200, { 'Content-Type': contentType, ...SECURITY_HEADERS });
+    
+    // Ensure the service worker and HTML are never HTTP-cached, 
+    // so updates to sw.js are fetched immediately.
+    const cacheHeaders = (filePath.endsWith('sw.js') || filePath.endsWith('.html')) 
+      ? { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0' }
+      : {};
+
+    res.writeHead(200, { 'Content-Type': contentType, ...SECURITY_HEADERS, ...cacheHeaders });
     res.end(content);
   });
 }
