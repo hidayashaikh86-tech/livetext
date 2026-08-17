@@ -2267,19 +2267,24 @@ async function showBrowserNotification(message) {
   if (isPublicRoom && !notifPrefs.publicRooms) return;
   if (!isPublicRoom && !notifPrefs.privateRooms) return;
 
+  // Trigger vibration directly (notification API vibrate is unreliable on Android)
+  if (notifPrefs.vibrate && navigator.vibrate) {
+    try { navigator.vibrate([150, 80, 150]); } catch(e) {}
+  }
+
   const options = {
     body: "New secure message received",
     icon: "/logo.jpg",
-    badge: "/favicon-192.png",
+    badge: "/badge-mono.png",
     tag: "shareli-" + message.id,
     renotify: true,
     requireInteraction: false,
     silent: !notifPrefs.vibrate
   };
 
-  // Add vibration pattern if enabled
+  // Also pass vibrate pattern (works on some Android versions)
   if (notifPrefs.vibrate) {
-    options.vibrate = [100, 50, 100];
+    options.vibrate = [150, 80, 150];
   }
 
   try {
@@ -2303,6 +2308,183 @@ async function showBrowserNotification(message) {
     console.warn("Notification failed:", err);
   }
 }
+
+// ═══════════════════════════════════════════════
+//  QR CODE SCANNER
+// ═══════════════════════════════════════════════
+(function initQrScanner() {
+  const scannerModal = document.getElementById("qr-scanner-modal");
+  const scannerVideo = document.getElementById("qr-scanner-video");
+  const scannerStatus = document.getElementById("qr-scanner-status");
+  const closeScannerBtn = document.getElementById("close-qr-scanner");
+  const scanQrBtn = document.getElementById("scan-qr-btn");
+  const scanFromQrModal = document.getElementById("scan-from-qr-modal");
+
+  if (!scannerModal || !scannerVideo) return;
+
+  let cameraStream = null;
+  let scanInterval = null;
+  let scanning = false;
+
+  function openScanner() {
+    // Close QR show modal if open
+    if (qrModal) { qrModal.classList.add("hidden"); qrModal.setAttribute("aria-hidden", "true"); }
+    // Close sidebar on mobile
+    const sidebar = document.getElementById("sidebar");
+    const sidebarOverlay = document.getElementById("sidebar-overlay");
+    if (sidebar && window.innerWidth < 768) {
+      sidebar.classList.remove("open");
+      if (sidebarOverlay) sidebarOverlay.classList.add("hidden");
+    }
+
+    scannerModal.classList.remove("hidden");
+    scannerModal.setAttribute("aria-hidden", "false");
+    scannerStatus.textContent = "Initializing camera...";
+    scannerStatus.classList.remove("qr-scanner-success");
+    scanning = true;
+    startCamera();
+  }
+
+  function closeScanner() {
+    scanning = false;
+    scannerModal.classList.add("hidden");
+    scannerModal.setAttribute("aria-hidden", "true");
+    stopCamera();
+  }
+
+  async function startCamera() {
+    try {
+      // Prefer back camera on mobile
+      cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 640 } }
+      });
+      scannerVideo.srcObject = cameraStream;
+      await scannerVideo.play();
+      scannerStatus.textContent = "Scanning...";
+
+      // Start QR detection loop
+      if ('BarcodeDetector' in window) {
+        startNativeDetection();
+      } else {
+        // Fallback: use canvas + manual detection attempt
+        startCanvasFallback();
+      }
+    } catch (err) {
+      console.warn("Camera error:", err);
+      if (err.name === "NotAllowedError") {
+        scannerStatus.textContent = "Camera permission denied";
+        showToast("Camera permission is required to scan QR codes");
+      } else if (err.name === "NotFoundError") {
+        scannerStatus.textContent = "No camera found";
+        showToast("No camera found on this device");
+      } else {
+        scannerStatus.textContent = "Camera error";
+        showToast("Could not access camera: " + err.message);
+      }
+    }
+  }
+
+  function stopCamera() {
+    if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      cameraStream = null;
+    }
+    scannerVideo.srcObject = null;
+  }
+
+  // Native BarcodeDetector (Chrome 83+, Edge, Safari 17.2+)
+  async function startNativeDetection() {
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    scanInterval = setInterval(async () => {
+      if (!scanning || scannerVideo.readyState < 2) return;
+      try {
+        const barcodes = await detector.detect(scannerVideo);
+        if (barcodes.length > 0) {
+          handleQrResult(barcodes[0].rawValue);
+        }
+      } catch (e) { /* ignore frame errors */ }
+    }, 250);
+  }
+
+  // Fallback for Firefox and older browsers
+  function startCanvasFallback() {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+    scannerStatus.textContent = "Scanning (compatibility mode)...";
+
+    // Try to dynamically load jsQR from CDN for Firefox support
+    if (!window.jsQR) {
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js";
+      script.onload = () => startJsQrLoop(canvas, ctx);
+      script.onerror = () => {
+        scannerStatus.textContent = "QR scanning not supported";
+        showToast("Your browser doesn't support QR scanning. Try Chrome or Edge.");
+      };
+      document.head.appendChild(script);
+    } else {
+      startJsQrLoop(canvas, ctx);
+    }
+  }
+
+  function startJsQrLoop(canvas, ctx) {
+    scanInterval = setInterval(() => {
+      if (!scanning || scannerVideo.readyState < 2) return;
+      canvas.width = scannerVideo.videoWidth;
+      canvas.height = scannerVideo.videoHeight;
+      ctx.drawImage(scannerVideo, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (window.jsQR) {
+        const code = window.jsQR(imageData.data, imageData.width, imageData.height);
+        if (code && code.data) {
+          handleQrResult(code.data);
+        }
+      }
+    }, 300);
+  }
+
+  function handleQrResult(rawValue) {
+    if (!rawValue || !scanning) return;
+
+    // Security: Only accept Shareli URLs
+    let url;
+    try { url = new URL(rawValue); } catch { return; }
+
+    const allowed = ["shareli.online", "www.shareli.online"];
+    // Also allow localhost for development
+    if (!allowed.includes(url.hostname) && !url.hostname.includes("localhost")) {
+      scannerStatus.textContent = "Not a Shareli QR code";
+      return;
+    }
+
+    // Success!
+    scanning = false;
+    scannerStatus.textContent = "✓ Room found! Joining...";
+    scannerStatus.classList.add("qr-scanner-success");
+
+    // Vibrate on success
+    if (navigator.vibrate) try { navigator.vibrate(200); } catch(e) {}
+
+    // Navigate after short delay for visual feedback
+    setTimeout(() => {
+      closeScanner();
+      window.location.href = rawValue;
+    }, 800);
+  }
+
+  // Event listeners
+  if (scanQrBtn) scanQrBtn.addEventListener("click", openScanner);
+  if (scanFromQrModal) scanFromQrModal.addEventListener("click", openScanner);
+  if (closeScannerBtn) closeScannerBtn.addEventListener("click", closeScanner);
+
+  // Close on overlay click / Escape
+  scannerModal.addEventListener("click", (e) => { if (e.target === scannerModal) closeScanner(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !scannerModal.classList.contains("hidden")) closeScanner();
+  });
+})();
 
 connect();
 setInterval(updateCountdowns, 1000);

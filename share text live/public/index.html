@@ -117,6 +117,10 @@
           <div class="room-actions">
             <button id="new-room" class="secondary-action" type="button" data-default-label="New private">New private</button>
             <button id="default-room" class="secondary-action" type="button">Default public</button>
+            <button id="scan-qr-btn" class="secondary-action" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              Scan QR
+            </button>
           </div>
           <p id="room-label" class="room-label"></p>
         </div>
@@ -332,7 +336,13 @@
       <div class="modal-content" style="text-align: center; max-width: 300px; padding: 24px;">
         <h3 style="margin-top: 0; margin-bottom: 16px;">Scan to Join</h3>
         <div id="qrcode-container" style="display: flex; justify-content: center; background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;"></div>
-        <button id="close-qr-modal" class="btn-primary" style="width: 100%;">Close</button>
+        <div style="display: flex; gap: 10px;">
+          <button id="close-qr-modal" class="btn-primary" style="flex: 1;">Close</button>
+          <button id="scan-from-qr-modal" class="secondary-action" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Scan
+          </button>
+        </div>
       </div>
     </div>
 
@@ -397,6 +407,22 @@
         
         <div style="display: flex; gap: 10px; margin-top: 20px;">
           <button id="notif-settings-close" class="btn-primary" type="button" style="flex: 1;">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- QR Scanner Modal -->
+    <div id="qr-scanner-modal" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal-content qr-scanner-content">
+        <h3 style="margin: 0 0 4px; font-size: 1.1rem; text-align: center;">📷 Scan QR Code</h3>
+        <p style="margin: 0 0 16px; font-size: 0.78rem; color: var(--muted); text-align: center;">Point your camera at a Shareli QR code</p>
+        <div class="qr-scanner-viewport">
+          <video id="qr-scanner-video" autoplay playsinline muted></video>
+          <div class="qr-scanner-frame"></div>
+          <div id="qr-scanner-status" class="qr-scanner-status">Initializing camera...</div>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+          <button id="close-qr-scanner" class="btn-primary" type="button" style="flex: 1;">Cancel</button>
         </div>
       </div>
     </div>
