@@ -2114,21 +2114,89 @@ if (themeToggle) {
 // ═══════════════════════════════════════════════
 //  BROWSER NOTIFICATIONS (Privacy-Safe)
 // ═══════════════════════════════════════════════
-let notificationsEnabled = localStorage.getItem("shareli-notif") === "true";
+// ── Notification Preferences ──
+const NOTIF_PREFS_KEY = "shareli-notif-prefs";
+const defaultNotifPrefs = { enabled: false, publicRooms: true, privateRooms: true, vibrate: true, mutedRooms: [] };
+
+function loadNotifPrefs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY));
+    return { ...defaultNotifPrefs, ...saved };
+  } catch { return { ...defaultNotifPrefs }; }
+}
+function saveNotifPrefs(prefs) {
+  localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs));
+}
+
+let notifPrefs = loadNotifPrefs();
+// Backward compat: migrate old single boolean
+if (localStorage.getItem("shareli-notif") === "true" && !localStorage.getItem(NOTIF_PREFS_KEY)) {
+  notifPrefs.enabled = true;
+  saveNotifPrefs(notifPrefs);
+}
+let notificationsEnabled = notifPrefs.enabled; // keep for backward compat with showBrowserNotification guard
 
 function updateNotifUI() {
   if (!notifToggle) return;
   const notifLabel = document.getElementById("notif-label");
-  if (notificationsEnabled && Notification.permission === "granted") {
+  if (notifPrefs.enabled && Notification.permission === "granted") {
     notifToggle.classList.add("notif-active");
-    if (notifLabel) notifLabel.textContent = "Disable notifications";
+    if (notifLabel) notifLabel.textContent = "Notification settings";
   } else {
     notifToggle.classList.remove("notif-active");
-    if (notifLabel) notifLabel.textContent = "Enable notifications";
+    if (notifLabel) notifLabel.textContent = "Notification settings";
+  }
+  // Update per-room mute button
+  const muteBtn = document.getElementById("mute-room-btn");
+  const muteLabel = document.getElementById("mute-room-label");
+  if (muteBtn && muteLabel) {
+    const isMuted = notifPrefs.mutedRooms.includes(currentRoomId);
+    muteLabel.textContent = isMuted ? "Unmute this room" : "Mute this room";
   }
 }
 updateNotifUI();
 
+// Notification Settings Modal Logic
+const notifSettingsModal = document.getElementById("notif-settings-modal");
+const notifPublicToggle = document.getElementById("notif-public");
+const notifPrivateToggle = document.getElementById("notif-private");
+const notifVibrateToggle = document.getElementById("notif-vibrate");
+const notifSettingsClose = document.getElementById("notif-settings-close");
+
+function openNotifSettings() {
+  if (!notifSettingsModal) return;
+  // Sync UI with stored prefs
+  if (notifPublicToggle) notifPublicToggle.checked = notifPrefs.publicRooms;
+  if (notifPrivateToggle) notifPrivateToggle.checked = notifPrefs.privateRooms;
+  if (notifVibrateToggle) notifVibrateToggle.checked = notifPrefs.vibrate;
+  notifSettingsModal.classList.remove("hidden");
+  notifSettingsModal.setAttribute("aria-hidden", "false");
+}
+
+function closeNotifSettings() {
+  if (!notifSettingsModal) return;
+  // Save on close
+  notifPrefs.publicRooms = notifPublicToggle ? notifPublicToggle.checked : true;
+  notifPrefs.privateRooms = notifPrivateToggle ? notifPrivateToggle.checked : true;
+  notifPrefs.vibrate = notifVibrateToggle ? notifVibrateToggle.checked : true;
+  saveNotifPrefs(notifPrefs);
+  notificationsEnabled = notifPrefs.enabled; // sync
+  notifSettingsModal.classList.add("hidden");
+  notifSettingsModal.setAttribute("aria-hidden", "true");
+  updateNotifUI();
+}
+
+if (notifSettingsClose) notifSettingsClose.addEventListener("click", closeNotifSettings);
+if (notifSettingsModal) {
+  notifSettingsModal.addEventListener("click", (e) => {
+    if (e.target === notifSettingsModal) closeNotifSettings();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !notifSettingsModal.classList.contains("hidden")) closeNotifSettings();
+  });
+}
+
+// Notif toggle now opens settings modal (and requests permission if first time)
 if (notifToggle) {
   notifToggle.addEventListener("click", async (e) => {
     e.stopPropagation();
@@ -2136,21 +2204,49 @@ if (notifToggle) {
       showToast("Your browser doesn't support notifications");
       return;
     }
-    if (notificationsEnabled) {
-      notificationsEnabled = false;
-      localStorage.setItem("shareli-notif", "false");
-      showToast("Notifications disabled");
-    } else {
+    // Request permission if not granted yet
+    if (Notification.permission === "default") {
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
+        notifPrefs.enabled = true;
+        saveNotifPrefs(notifPrefs);
         notificationsEnabled = true;
-        localStorage.setItem("shareli-notif", "true");
         showToast("Notifications enabled!");
       } else {
         showToast("Notification permission denied");
+        return;
       }
+    } else if (Notification.permission === "granted" && !notifPrefs.enabled) {
+      notifPrefs.enabled = true;
+      saveNotifPrefs(notifPrefs);
+      notificationsEnabled = true;
     }
     updateNotifUI();
+    // Close dropdown before opening modal
+    const boardMenu = document.getElementById("board-menu");
+    if (boardMenu) boardMenu.classList.add("hidden");
+    openNotifSettings();
+  });
+}
+
+// Per-room mute button
+const muteRoomBtn = document.getElementById("mute-room-btn");
+if (muteRoomBtn) {
+  muteRoomBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const idx = notifPrefs.mutedRooms.indexOf(currentRoomId);
+    if (idx === -1) {
+      notifPrefs.mutedRooms.push(currentRoomId);
+      showToast("🔇 Room muted");
+    } else {
+      notifPrefs.mutedRooms.splice(idx, 1);
+      showToast("🔔 Room unmuted");
+    }
+    saveNotifPrefs(notifPrefs);
+    updateNotifUI();
+    // Close dropdown
+    const boardMenu = document.getElementById("board-menu");
+    if (boardMenu) boardMenu.classList.add("hidden");
   });
 }
 
@@ -2158,19 +2254,33 @@ if (notifToggle) {
 // This protects E2E encryption in public, private, and password-protected rooms.
 // Uses ServiceWorker notification API which works on both desktop AND mobile.
 async function showBrowserNotification(message) {
-  if (!notificationsEnabled) return;
+  if (!notifPrefs.enabled) return;
   if (!document.hidden) return;
   if (Notification.permission !== "granted") return;
   if (message.authorId === clientId) return;
 
+  // Per-room mute check
+  if (notifPrefs.mutedRooms.includes(currentRoomId)) return;
+
+  // Room-type preference check
+  const isPublicRoom = (currentRoomId === "public");
+  if (isPublicRoom && !notifPrefs.publicRooms) return;
+  if (!isPublicRoom && !notifPrefs.privateRooms) return;
+
   const options = {
     body: "New secure message received",
     icon: "/logo.jpg",
-    badge: "/logo.jpg",
+    badge: "/favicon-192.png",
     tag: "shareli-" + message.id,
     renotify: true,
-    requireInteraction: false
+    requireInteraction: false,
+    silent: !notifPrefs.vibrate
   };
+
+  // Add vibration pattern if enabled
+  if (notifPrefs.vibrate) {
+    options.vibrate = [100, 50, 100];
+  }
 
   try {
     // Use Service Worker notification (works on mobile + desktop)

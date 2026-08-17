@@ -186,7 +186,11 @@
                <div id="board-menu" class="dropdown-menu hidden">
                  <button id="notif-toggle" class="notif-toggle dropdown-toggle-item" type="button">
                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                   <span id="notif-label">Enable notifications</span>
+                   <span id="notif-label">Notification settings</span>
+                 </button>
+                 <button id="mute-room-btn" class="dropdown-toggle-item" type="button">
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                   <span id="mute-room-label">Mute this room</span>
                  </button>
                  <button id="theme-toggle" class="theme-toggle dropdown-toggle-item" type="button">
                    <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -353,6 +357,46 @@
         <div style="display: flex; gap: 10px;">
           <button id="pw-cancel" class="secondary-action" type="button" style="flex: 1;">Cancel</button>
           <button id="pw-confirm" class="btn-primary" type="button" style="flex: 2;">Create Room</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Settings Modal -->
+    <div id="notif-settings-modal" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal-content" style="max-width: 380px; padding: 28px;">
+        <h3 style="margin-top: 0; margin-bottom: 6px; font-size: 1.1rem;">🔔 Notification Settings</h3>
+        <p style="margin: 0 0 20px; font-size: 0.82rem; color: var(--muted); line-height: 1.5;">
+          Control when you receive notifications. Content is never shown — only "New secure message received".
+        </p>
+        
+        <div class="notif-settings-group">
+          <label class="notif-setting-row">
+            <span class="notif-setting-info">
+              <span class="notif-setting-title">🌐 Public Rooms</span>
+              <span class="notif-setting-desc">Notify for messages in public rooms</span>
+            </span>
+            <input type="checkbox" id="notif-public" class="toggle-switch">
+          </label>
+          
+          <label class="notif-setting-row">
+            <span class="notif-setting-info">
+              <span class="notif-setting-title">🔒 Private Rooms</span>
+              <span class="notif-setting-desc">Notify for messages in private &amp; password rooms</span>
+            </span>
+            <input type="checkbox" id="notif-private" class="toggle-switch">
+          </label>
+          
+          <label class="notif-setting-row">
+            <span class="notif-setting-info">
+              <span class="notif-setting-title">📳 Vibration</span>
+              <span class="notif-setting-desc">Vibrate on notification</span>
+            </span>
+            <input type="checkbox" id="notif-vibrate" class="toggle-switch">
+          </label>
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button id="notif-settings-close" class="btn-primary" type="button" style="flex: 1;">Done</button>
         </div>
       </div>
     </div>
