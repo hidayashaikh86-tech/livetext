@@ -79,7 +79,7 @@ function normalizeRoomId(value) {
   return roomId || "public";
 }
 
-function getRoom(roomId) {
+function getRoom(roomId, adminToken = null) {
   const id = normalizeRoomId(roomId);
 
   if (!rooms.has(id)) {
@@ -87,7 +87,8 @@ function getRoom(roomId) {
       id,
       messages: [],
       typingDrafts: new Map(),
-      pinnedMessageId: null
+      pinnedMessageId: null,
+      adminToken: adminToken || null
     });
   }
 
@@ -367,7 +368,7 @@ function handleClientAction(client, action) {
     removeExpiredMessages(room);
     const index = room.messages.findIndex((item) => item.id === action.id);
     if (index === -1) return;
-    if (room.messages[index].authorId !== client.id) return; // Only author can delete
+    if (room.messages[index].authorId !== client.id && !client.isAdmin) return; // Only author or admin can delete
 
     room.messages.splice(index, 1);
     if (room.pinnedMessageId === action.id) {
@@ -499,9 +500,13 @@ server.on("upgrade", (req, socket) => {
   );
 
   const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-  const room = getRoom(requestUrl.searchParams.get("room"));
+  const providedAdminToken = requestUrl.searchParams.get("adminToken");
+  const room = getRoom(requestUrl.searchParams.get("room"), providedAdminToken);
   const sessionId = requestUrl.searchParams.get("sessionId");
   const id = sessionId ? crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16) : crypto.randomUUID();
+  
+  const isAdmin = (room.id !== 'public' && room.adminToken && room.adminToken === providedAdminToken) ? true : false;
+  
   const client = {
     id,
     socket,
@@ -510,7 +515,8 @@ server.on("upgrade", (req, socket) => {
     name: `Guest ${String(clients.size + 1).padStart(2, "0")}`,
     color: `hsl(${Math.floor(Math.random() * 360)} 70% 45%)`,
     messageBuffer: [],
-    rateLimitTimestamps: []
+    rateLimitTimestamps: [],
+    isAdmin
   };
 
   clients.set(id, client);
@@ -521,7 +527,8 @@ server.on("upgrade", (req, socket) => {
     name: client.name,
     drafts: activeTypingDrafts(room),
     pinnedMessageId: room.pinnedMessageId,
-    serverTime: Date.now()
+    serverTime: Date.now(),
+    isAdmin: client.isAdmin
   });
 
   const historyMsgs = activeMessages(room);

@@ -171,6 +171,7 @@ function parseMarkdown(text) {
 
 let socket;
 let clientId = "";
+let isAdmin = false;
 let messages = [];
 let typingDrafts = [];
 let reconnectTimer;
@@ -459,7 +460,13 @@ async function connect(options = {}) {
   }
 
   const queryParams = new URLSearchParams();
-  if (currentRoomId !== "public") queryParams.set("room", currentRoomId);
+  if (currentRoomId !== "public") {
+    queryParams.set("room", currentRoomId);
+    const adminToken = localStorage.getItem(`shareli_admin_token_${currentRoomId}`);
+    if (adminToken) {
+      queryParams.set("adminToken", adminToken);
+    }
+  }
   queryParams.set("sessionId", sessionId);
 
   const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
@@ -492,6 +499,7 @@ async function connect(options = {}) {
     if (payload.type === "hello") {
       setConnection("Connected live", "online");
       clientId = payload.clientId;
+      isAdmin = !!payload.isAdmin;
       currentRoomId = payload.roomId || currentRoomId;
       updateRoomUi();
       nameInput.value = localStorage.getItem("shareTextLiveName") || payload.name;
@@ -937,7 +945,17 @@ function renderMessages() {
     
     if (!isOwnMessage) {
       if (editButton) editButton.style.display = "none";
-      if (deleteButton) deleteButton.style.display = "none";
+      if (!isAdmin) {
+        if (deleteButton) deleteButton.style.display = "none";
+      } else {
+        if (deleteButton) {
+          deleteButton.textContent = "🗑 Delete (Admin)";
+          deleteButton.title = "Delete this message as room admin";
+          deleteButton.style.background = "var(--red)";
+          deleteButton.style.borderColor = "var(--red)";
+          deleteButton.style.color = "white";
+        }
+      }
     } else {
       // 15-minute edit window
       const EDIT_WINDOW_MS = 15 * 60 * 1000;
@@ -1712,6 +1730,7 @@ newRoomButton.addEventListener("click", () => {
     // Fallback if modal not found
     const roomId = generateRoomId();
     currentRoomId = roomId;
+    localStorage.setItem(`shareli_admin_token_${roomId}`, Math.random().toString(36).substring(2) + Date.now().toString(36));
     updateRoomUi();
     copyText(roomLink.value, newRoomButton);
     switchRoom(roomId);
@@ -1731,6 +1750,7 @@ newRoomButton.addEventListener("click", () => {
     const password = pwInput.value.trim();
     const roomId = generateRoomId();
     currentRoomId = roomId;
+    localStorage.setItem(`shareli_admin_token_${roomId}`, Math.random().toString(36).substring(2) + Date.now().toString(36));
 
     if (password) {
       // Derive the AES key from the password
