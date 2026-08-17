@@ -308,7 +308,16 @@ function promptForPassword() {
     // underneath the password modal when re-entering a password-protected room.
     messages = [];
     typingDrafts = [];
+    pinnedMessageId = null;
     if (messagesEl) messagesEl.innerHTML = "";
+    
+    const pinnedContainer = document.getElementById("pinned-message-container");
+    if (pinnedContainer) pinnedContainer.innerHTML = "";
+    
+    const typingInd = document.getElementById("typing-indicators");
+    if (typingInd) typingInd.innerHTML = "";
+    
+    if (draftStatus) draftStatus.textContent = "";
 
     // Switch modal to JOIN mode
     if (pwModalTitle) pwModalTitle.textContent = "🔐 Password Required";
