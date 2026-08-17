@@ -925,6 +925,11 @@ function renderMessages() {
     node.dataset.messageId = message.id;
     node.dataset.expiresAt = message.expiresAt || "";
     
+    if (message.authorId !== clientId) {
+      if (editButton) editButton.style.display = "none";
+      if (deleteButton) deleteButton.style.display = "none";
+    }
+    
     if (message.isPending) {
       node.classList.add("is-pending");
       node.style.opacity = "0.55";
