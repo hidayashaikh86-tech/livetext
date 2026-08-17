@@ -2265,7 +2265,7 @@ if (themeToggle) {
 // ═══════════════════════════════════════════════
 // ── Notification Preferences ──
 const NOTIF_PREFS_KEY = "shareli-notif-prefs";
-const defaultNotifPrefs = { enabled: false, publicRooms: true, privateRooms: true, vibrate: true, mutedRooms: [] };
+const defaultNotifPrefs = { enabled: false, publicRooms: true, privateRooms: true, vibrate: true, sound: true, mutedRooms: [] };
 
 function loadNotifPrefs() {
   try {
@@ -2310,6 +2310,7 @@ const notifSettingsModal = document.getElementById("notif-settings-modal");
 const notifPublicToggle = document.getElementById("notif-public");
 const notifPrivateToggle = document.getElementById("notif-private");
 const notifVibrateToggle = document.getElementById("notif-vibrate");
+const notifSoundToggle = document.getElementById("notif-sound");
 const notifSettingsClose = document.getElementById("notif-settings-close");
 
 function openNotifSettings() {
@@ -2318,6 +2319,7 @@ function openNotifSettings() {
   if (notifPublicToggle) notifPublicToggle.checked = notifPrefs.publicRooms;
   if (notifPrivateToggle) notifPrivateToggle.checked = notifPrefs.privateRooms;
   if (notifVibrateToggle) notifVibrateToggle.checked = notifPrefs.vibrate;
+  if (notifSoundToggle) notifSoundToggle.checked = notifPrefs.sound;
   notifSettingsModal.classList.remove("hidden");
   notifSettingsModal.setAttribute("aria-hidden", "false");
 }
@@ -2328,6 +2330,7 @@ function closeNotifSettings() {
   notifPrefs.publicRooms = notifPublicToggle ? notifPublicToggle.checked : true;
   notifPrefs.privateRooms = notifPrivateToggle ? notifPrivateToggle.checked : true;
   notifPrefs.vibrate = notifVibrateToggle ? notifVibrateToggle.checked : true;
+  notifPrefs.sound = notifSoundToggle ? notifSoundToggle.checked : true;
   saveNotifPrefs(notifPrefs);
   notificationsEnabled = notifPrefs.enabled; // sync
   notifSettingsModal.classList.add("hidden");
@@ -2399,13 +2402,35 @@ if (muteRoomBtn) {
   });
 }
 
+// Play synthetic beep sound for notification
+function playNotificationSound() {
+  if (typeof window.AudioContext !== "undefined" || typeof window.webkitAudioContext !== "undefined") {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(600, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.2);
+    } catch (e) {
+      // Ignore audio errors
+    }
+  }
+}
+
 // Privacy-safe: NEVER show message content in notifications.
 // This protects E2E encryption in public, private, and password-protected rooms.
 // Uses ServiceWorker notification API which works on both desktop AND mobile.
 async function showBrowserNotification(message) {
   if (!notifPrefs.enabled) return;
-  if (!document.hidden) return;
-  if (Notification.permission !== "granted") return;
   if (message.authorId === clientId) return;
 
   // Per-room mute check
@@ -2415,6 +2440,16 @@ async function showBrowserNotification(message) {
   const isPublicRoom = (currentRoomId === "public");
   if (isPublicRoom && !notifPrefs.publicRooms) return;
   if (!isPublicRoom && !notifPrefs.privateRooms) return;
+
+  // Play sound directly if enabled (Always ping for new messages, even if tab is visible)
+  if (notifPrefs.sound) {
+    playNotificationSound();
+  }
+
+  // If tab is visible, don't show OS notification popup, just rely on the sound/UI
+  if (!document.hidden) return;
+
+  if (Notification.permission !== "granted") return;
 
   // Trigger vibration directly (notification API vibrate is unreliable on Android)
   if (notifPrefs.vibrate && navigator.vibrate) {
@@ -2428,7 +2463,7 @@ async function showBrowserNotification(message) {
     tag: "shareli-" + message.id,
     renotify: true,
     requireInteraction: false,
-    silent: !notifPrefs.vibrate
+    silent: !notifPrefs.sound // Let the OS play its default notification sound if sound is enabled
   };
 
   // Also pass vibrate pattern (works on some Android versions)
