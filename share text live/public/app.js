@@ -1264,17 +1264,36 @@ function renderMessages() {
       const nextText = editInput.value.trim();
       if (!nextText && !attachmentData) return;
       
-      let editPayloadData = nextText;
-      if (attachmentData || nextText.startsWith('{"__v":1')) {
-        editPayloadData = JSON.stringify({
-          __v: 1,
-          text: nextText,
-          file: attachmentData
-        });
-      }
+      const submitBtn = editForm.querySelector('button[type="submit"]');
+      const cancelBtn = editForm.querySelector('.cancel-edit');
+      const originalText = submitBtn.textContent;
       
-      const encryptedText = await encryptText(editPayloadData);
-      send({ type: "update", id: message.id, text: encryptedText });
+      try {
+        submitBtn.disabled = true;
+        cancelBtn.disabled = true;
+        submitBtn.textContent = "Saving...";
+        
+        let editPayloadData = nextText;
+        if (attachmentData || nextText.startsWith('{"__v":1')) {
+          editPayloadData = JSON.stringify({
+            __v: 1,
+            text: nextText,
+            file: attachmentData
+          });
+        }
+        
+        const encryptedText = await encryptText(editPayloadData);
+        send({ type: "update", id: message.id, text: encryptedText });
+        showToast("Edit saved!");
+        editForm.hidden = true;
+      } catch (err) {
+        console.error("Edit failed:", err);
+        showToast("Failed to save edit.");
+      } finally {
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
     });
 
     deleteButton.addEventListener("click", () => {
