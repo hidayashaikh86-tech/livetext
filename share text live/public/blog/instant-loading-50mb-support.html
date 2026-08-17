@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Shareli now supports instant text loading and 50MB+ file sharing via streaming history and skeleton loaders." />
+    <meta name="description" content="Shareli now supports instant text loading and 5MB file sharing via streaming history and skeleton loaders." />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://shareli.online/blog/instant-loading-50mb-support.html" />
-    <title>Instant Text Loading & 50MB+ File Support | Shareli Blog</title>
+    <title>Instant Text Loading & 5MB File Support | Shareli Blog</title>
     <link rel="stylesheet" href="../styles.css" />
     <link rel="icon" type="image/jpeg" href="/logo.jpg" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19,24 +19,26 @@
       p { line-height: 1.8; color: var(--muted); font-size: 1.05rem; margin-bottom: 24px; }
       h2 { color: var(--ink); margin-top: 48px; margin-bottom: 16px; }
     </style>
+      <meta property="og:image" content="https://shareli.online/logo.jpg" />
+    <meta name="twitter:image" content="https://shareli.online/logo.jpg" />
   </head>
   <body>
     <main class="page-wrap">
       <nav class="page-nav">
         <a href="/blog.html">← Back to Blog</a>
       </nav>
-      <h1>Instant Text Loading & 50MB+ File Support</h1>
+      <h1>Instant Text Loading & 5MB File Support</h1>
       <p>August 2026</p>
       
       <p>We've completely overhauled the synchronization engine behind Shareli to prioritize speed above all else.</p>
       
       <h2>The Problem with Large Files</h2>
-      <p>Previously, if a room contained large files (e.g., 50MB+), joining the room required downloading the entire room history before you could see any messages. For users on slower networks, this meant staring at a blank screen for several seconds.</p>
+      <p>Previously, if a room contained large files (e.g., 5MB), joining the room required downloading the entire room history before you could see any messages. For users on slower networks, this meant staring at a blank screen for several seconds.</p>
 
       <h2>Streaming History & Skeleton Loaders</h2>
       <p>Today, we've fixed this. We introduced a new <strong>Streaming History</strong> engine. When you join a room, Shareli now instantly streams text messages first. Large files are processed asynchronously in the background. While the files are loading, you'll see a beautiful "Skeleton Loader" placeholder so you know exactly what is happening without the page freezing.</p>
 
-      <p>This means you can instantly read text and code snippets, even if there is a massive 50MB+ file currently being downloaded and decrypted in the background.</p>
+      <p>This means you can instantly read text and code snippets, even if there is a massive 5MB file currently being downloaded and decrypted in the background.</p>
 
       <h2>Try it out!</h2>
       <p>The update is live right now. Go drop a massive file into a room and open the link on your phone to see how instantly the text appears!</p>
