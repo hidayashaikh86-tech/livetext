@@ -3,6 +3,15 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+  'Permissions-Policy': 'camera=(self), microphone=(), geolocation=()',
+  'X-XSS-Protection': '1; mode=block',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' wss: ws:; media-src 'self' data: blob:;"
+};
+
 const PORT = Number(process.env.PORT || 3000);
 const HOST = "0.0.0.0";
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -11,6 +20,11 @@ const MAX_AUTHOR_NAME = 50;
 const DEFAULT_EXPIRES_IN_MS = 2 * 60 * 1000;
 const ALLOWED_EXPIRES_IN_MS = new Set([10 * 1000, 30 * 1000, DEFAULT_EXPIRES_IN_MS, 10 * 60 * 1000, 0]);
 const TYPING_STALE_MS = 4500;
+
+const RATE_LIMIT_WINDOW_MS = 10000; // 10 seconds
+const RATE_LIMIT_MAX_MESSAGES = 25; // max messages per window
+const MAX_CONNECTIONS_PER_IP = 10;
+const MAX_TOTAL_CONNECTIONS = 500;
 
 const clients = new Map();
 const rooms = new Map();
@@ -250,6 +264,15 @@ function removeExpiredMessages(room) {
 
 function handleClientAction(client, action) {
   if (!action || typeof action !== "object") return;
+  
+  // Rate limiting
+  const now = Date.now();
+  client.rateLimitTimestamps = (client.rateLimitTimestamps || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+  if (client.rateLimitTimestamps.length >= RATE_LIMIT_MAX_MESSAGES) {
+    sendJson(client.socket, { type: 'error', message: 'Rate limited. Please slow down.' });
+    return;
+  }
+  client.rateLimitTimestamps.push(now);
 
   const room = getRoom(client.roomId);
 
@@ -283,6 +306,10 @@ function handleClientAction(client, action) {
     };
 
     room.messages.push(message);
+    const MAX_MESSAGES_PER_ROOM = 200;
+    while (room.messages.length > MAX_MESSAGES_PER_ROOM) {
+      room.messages.shift();
+    }
     room.typingDrafts.delete(client.id);
     broadcastNewMessage(room, message);
     broadcastTyping(room);
@@ -295,6 +322,7 @@ function handleClientAction(client, action) {
     const text = safeUpdateText.length > MAX_TEXT_LENGTH ? safeUpdateText.slice(0, MAX_TEXT_LENGTH) : safeUpdateText;
     const message = room.messages.find((item) => item.id === action.id);
     if (!message || !text) return;
+    if (message.authorId !== client.id) return; // Only author can edit
 
     message.text = text;
     message.updatedAt = Date.now();
@@ -328,6 +356,7 @@ function handleClientAction(client, action) {
     removeExpiredMessages(room);
     const index = room.messages.findIndex((item) => item.id === action.id);
     if (index === -1) return;
+    if (room.messages[index].authorId !== client.id) return; // Only author can delete
 
     room.messages.splice(index, 1);
     if (room.pinnedMessageId === action.id) {
@@ -365,8 +394,30 @@ function serveFile(req, res) {
   const requestedPath = pathname === "/" ? "/index.html" : pathname;
 
   if (requestedPath === "/health" || requestedPath === "/ping") {
-    res.writeHead(200, { "Content-Type": mimeTypes[".txt"] });
+    res.writeHead(200, { 'Content-Type': mimeTypes['.txt'], ...SECURITY_HEADERS });
     res.end("OK");
+    return;
+  }
+
+  if (requestedPath === "/robots.txt") {
+    const origin = requestOrigin(req);
+    res.writeHead(200, { "Content-Type": mimeTypes[".txt"], ...SECURITY_HEADERS });
+    res.end(["User-agent: *", "Allow: /", `Sitemap: ${origin}/sitemap.xml`, ""].join("\n"));
+    return;
+  }
+
+  if (requestedPath === "/sitemap.xml") {
+    const origin = requestOrigin(req);
+    res.writeHead(200, { "Content-Type": mimeTypes[".xml"], ...SECURITY_HEADERS });
+    res.end(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${origin}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
+`);
     return;
   }
 
@@ -375,20 +426,20 @@ function serveFile(req, res) {
   const filePath = path.join(PUBLIC_DIR, safePath);
 
   if (!filePath.startsWith(PUBLIC_DIR)) {
-    res.writeHead(403);
+    res.writeHead(403, SECURITY_HEADERS);
     res.end("Forbidden");
     return;
   }
 
   fs.readFile(filePath, (error, content) => {
     if (error) {
-      res.writeHead(404);
+      res.writeHead(404, SECURITY_HEADERS);
       res.end("Not found");
       return;
     }
 
     const contentType = mimeTypes[path.extname(filePath)] || "application/octet-stream";
-    res.writeHead(200, { "Content-Type": contentType });
+    res.writeHead(200, { 'Content-Type': contentType, ...SECURITY_HEADERS });
     res.end(content);
   });
 }
@@ -398,6 +449,18 @@ const server = http.createServer(serveFile);
 server.on("upgrade", (req, socket) => {
   if (req.headers.upgrade !== "websocket") {
     socket.destroy();
+    return;
+  }
+
+  // Connection limits
+  const clientIp = req.socket.remoteAddress || 'unknown';
+  if (clients.size >= MAX_TOTAL_CONNECTIONS) {
+    socket.end('HTTP/1.1 503 Service Unavailable\r\n\r\n');
+    return;
+  }
+  const ipCount = Array.from(clients.values()).filter(c => c.ip === clientIp).length;
+  if (ipCount >= MAX_CONNECTIONS_PER_IP) {
+    socket.end('HTTP/1.1 429 Too Many Requests\r\n\r\n');
     return;
   }
 
@@ -423,10 +486,12 @@ server.on("upgrade", (req, socket) => {
   const client = {
     id,
     socket,
+    ip: clientIp,
     roomId: room.id,
     name: `Guest ${String(clients.size + 1).padStart(2, "0")}`,
     color: `hsl(${Math.floor(Math.random() * 360)} 70% 45%)`,
-    messageBuffer: []
+    messageBuffer: [],
+    rateLimitTimestamps: []
   };
 
   clients.set(id, client);
@@ -506,6 +571,11 @@ setInterval(() => {
     activeTypingDrafts(room);
     if (room.typingDrafts.size !== beforeTypingCount) {
       broadcastTyping(room);
+    }
+
+    // Clean up empty rooms with no connected users
+    if (room.id !== 'public' && room.messages.length === 0 && clientsInRoom(room.id).length === 0) {
+      rooms.delete(room.id);
     }
   }
 }, 1000);

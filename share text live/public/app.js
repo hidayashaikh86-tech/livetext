@@ -242,6 +242,10 @@ async function deriveKeyFromPassword(password, roomId) {
 }
 
 async function setupCryptoKey() {
+  // SECURITY: Reset the crypto key immediately so no stale key can decrypt
+  // messages while the password prompt is visible.
+  roomCryptoKey = null;
+
   if (currentRoomId === "public") {
     // Shared constant key for the public room so everyone can read each other's messages
     const publicBase64Key = "U2hhcmVUZXh0TGl2ZVB1YmxpY1Jvb21LZXkxMjM0NTY="; // btoa("ShareTextLivePublicRoomKey123456")
@@ -298,6 +302,13 @@ async function setupCryptoKey() {
 function promptForPassword() {
   return new Promise((resolve) => {
     if (!pwModal) { resolve(window.prompt("Enter room password:") || ""); return; }
+
+    // SECURITY: Immediately clear any visible messages to prevent data leaks.
+    // Without this, previously decrypted messages could flash for ~1 second
+    // underneath the password modal when re-entering a password-protected room.
+    messages = [];
+    typingDrafts = [];
+    if (messagesEl) messagesEl.innerHTML = "";
 
     // Switch modal to JOIN mode
     if (pwModalTitle) pwModalTitle.textContent = "🔐 Password Required";
@@ -689,12 +700,12 @@ function getDraftKey() {
 function saveDraft() {
   const value = messageInput.value;
 
-  if (value.trim()) {
-    localStorage.setItem(getDraftKey(), value);
-    draftStatus.textContent = "Draft saved";
-  } else {
+  if (currentRoomId !== 'public' || !value.trim()) {
     localStorage.removeItem(getDraftKey());
     draftStatus.textContent = "Draft ready";
+  } else {
+    localStorage.setItem(getDraftKey(), value);
+    draftStatus.textContent = "Draft saved";
   }
 }
 
@@ -888,7 +899,8 @@ function renderMessages() {
     const replyContextAuthor = node.querySelector(".reply-context-author");
     const replyContextText = node.querySelector(".reply-context-text");
 
-    avatar.style.background = message.authorColor || "#6366f1";
+    const mColor = message.authorColor || "#6366f1";
+    avatar.style.background = /^#(?:[0-9a-fA-F]{3}){1,2}$|^hsl\(\s*\d+(?:deg)?[\s,]+\d+%[\s,]+\d+%\s*\)$/.test(mColor) ? mColor : "#6366f1";
     node.dataset.createdAt = message.createdAt;
     node.dataset.messageId = message.id;
     node.dataset.expiresAt = message.expiresAt || "";
@@ -986,11 +998,15 @@ function renderMessages() {
           lightboxImg.alt = attachmentData.name;
           
           // Setup lightbox download button
-          lightboxDownload.onclick = () => {
+          lightboxDownload.onclick = async () => {
+            const res = await fetch(attachmentData.data);
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
-            a.href = attachmentData.data;
+            a.href = url;
             a.download = attachmentData.name;
             a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
           };
           
           lightbox.classList.remove("hidden");
@@ -1000,12 +1016,16 @@ function renderMessages() {
         const dlBtn = document.createElement("button");
         dlBtn.className = "image-overlay-download";
         dlBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download';
-        dlBtn.onclick = (e) => {
+        dlBtn.onclick = async (e) => {
           e.stopPropagation();
+          const res = await fetch(attachmentData.data);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
-          a.href = attachmentData.data;
+          a.href = url;
           a.download = attachmentData.name;
           a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
         };
         
         wrapper.appendChild(img);
@@ -1123,8 +1143,18 @@ function renderMessages() {
         const downloadBtn = document.createElement("a");
         downloadBtn.className = "btn-secondary file-download";
         downloadBtn.textContent = "Download";
-        downloadBtn.href = attachmentData.data;
-        downloadBtn.download = attachmentData.name;
+        downloadBtn.href = "#";
+        downloadBtn.onclick = async (e) => {
+          e.preventDefault();
+          const res = await fetch(attachmentData.data);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = attachmentData.name;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        };
         
         fileBox.append(fileIcon, fileName, downloadBtn);
         attachmentContainer.appendChild(fileBox);
@@ -1155,11 +1185,15 @@ function renderMessages() {
     }
 
     if (quickDownloadBtn) {
-      quickDownloadBtn.addEventListener("click", () => {
+      quickDownloadBtn.addEventListener("click", async () => {
+        const res = await fetch(attachmentData.data);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = attachmentData.data;
+        a.href = url;
         a.download = attachmentData.name;
         a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       });
     }
 
@@ -1231,7 +1265,8 @@ function renderTypingDrafts() {
 
     const avatar = document.createElement("span");
     avatar.className = "avatar";
-    avatar.style.background = draft.authorColor || "#6366f1";
+    const dColor = draft.authorColor || "#6366f1";
+    avatar.style.background = /^#(?:[0-9a-fA-F]{3}){1,2}$|^hsl\(\s*\d+(?:deg)?[\s,]+\d+%[\s,]+\d+%\s*\)$/.test(dColor) ? dColor : "#6366f1";
 
     const body = document.createElement("div");
     const heading = document.createElement("strong");
@@ -1270,7 +1305,8 @@ function renderPeople(users, count) {
 
     const avatar = document.createElement("span");
     avatar.className = "avatar";
-    avatar.style.background = user.color || "#6366f1";
+    const uColor = user.color || "#6366f1";
+    avatar.style.background = /^#(?:[0-9a-fA-F]{3}){1,2}$|^hsl\(\s*\d+(?:deg)?[\s,]+\d+%[\s,]+\d+%\s*\)$/.test(uColor) ? uColor : "#6366f1";
 
     const name = document.createElement("span");
     name.textContent = user.id === clientId ? `${user.name} (you)` : user.name;
@@ -2452,9 +2488,9 @@ async function showBrowserNotification(message) {
     let url;
     try { url = new URL(rawValue); } catch { return; }
 
-    const allowed = ["shareli.online", "www.shareli.online"];
-    // Also allow localhost for development
-    if (!allowed.includes(url.hostname) && !url.hostname.includes("localhost")) {
+    const allowed = ["shareli.online", "www.shareli.online", "localhost", "127.0.0.1"];
+    // Also allow localhost for development strictly
+    if (!allowed.includes(url.hostname)) {
       scannerStatus.textContent = "Not a Shareli QR code";
       return;
     }
