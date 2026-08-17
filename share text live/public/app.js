@@ -586,6 +586,10 @@ async function connect(options = {}) {
       renderTypingDrafts();
       if (isAtBottom) scrollToBottom();
     }
+
+    if (payload.type === "error") {
+      showToast(payload.message || "Something went wrong.");
+    }
   });
 
   socket.addEventListener("close", scheduleReconnect);
@@ -925,9 +929,28 @@ function renderMessages() {
     node.dataset.messageId = message.id;
     node.dataset.expiresAt = message.expiresAt || "";
     
-    if (message.authorId !== clientId) {
+    const isOwnMessage = message.authorId === clientId;
+    
+    if (isOwnMessage) {
+      node.classList.add("is-own");
+    }
+    
+    if (!isOwnMessage) {
       if (editButton) editButton.style.display = "none";
       if (deleteButton) deleteButton.style.display = "none";
+    } else {
+      // 15-minute edit window
+      const EDIT_WINDOW_MS = 15 * 60 * 1000;
+      const messageAge = Date.now() + serverOffset - message.createdAt;
+      if (messageAge > EDIT_WINDOW_MS) {
+        if (editButton) {
+          editButton.disabled = true;
+          editButton.style.opacity = "0.4";
+          editButton.style.cursor = "not-allowed";
+          editButton.textContent = "Edit (expired)";
+          editButton.title = "Editing is only available within 15 minutes of sending";
+        }
+      }
     }
     
     if (message.isPending) {
@@ -1223,6 +1246,7 @@ function renderMessages() {
     }
 
     editButton.addEventListener("click", () => {
+      if (editButton.disabled) return;
       editForm.hidden = false;
       text.hidden = true;
       dropdown.classList.add('hidden');
@@ -1254,7 +1278,32 @@ function renderMessages() {
     });
 
     deleteButton.addEventListener("click", () => {
-      send({ type: "delete", id: message.id });
+      // Show a styled inline confirmation instead of browser confirm()
+      const confirmOverlay = document.createElement("div");
+      confirmOverlay.className = "delete-confirm-overlay";
+      confirmOverlay.innerHTML = `
+        <div class="delete-confirm-box">
+          <p>Delete this message?</p>
+          <span class="delete-confirm-hint">This cannot be undone.</span>
+          <div class="delete-confirm-actions">
+            <button class="delete-confirm-cancel">Cancel</button>
+            <button class="delete-confirm-yes">Delete</button>
+          </div>
+        </div>
+      `;
+      node.style.position = "relative";
+      node.appendChild(confirmOverlay);
+      
+      confirmOverlay.querySelector(".delete-confirm-cancel").addEventListener("click", (e) => {
+        e.stopPropagation();
+        confirmOverlay.remove();
+      });
+      confirmOverlay.querySelector(".delete-confirm-yes").addEventListener("click", (e) => {
+        e.stopPropagation();
+        send({ type: "delete", id: message.id });
+        confirmOverlay.remove();
+      });
+      
       dropdown.classList.add('hidden');
     });
     
@@ -1380,8 +1429,8 @@ if (cancelReplyBtn) {
 
 // Attachment Logic
 async function processFile(file) {
-  if (file.size > 3 * 1024 * 1024) {
-    showToast("File is too large! Maximum is 3MB.");
+  if (file.size > 5 * 1024 * 1024) {
+    showToast("File is too large! Maximum is 5MB.");
     return;
   }
   
@@ -1507,8 +1556,8 @@ document.addEventListener("drop", async (e) => {
       await processFile(files[0]);
     } else {
       for (const file of files) {
-        if (file.size > 3 * 1024 * 1024) {
-          showToast(`"${file.name}" is too large (max 3MB), skipped.`);
+        if (file.size > 5 * 1024 * 1024) {
+          showToast(`"${file.name}" is too large (max 5MB), skipped.`);
           continue;
         }
         await processFile(file);

@@ -15,7 +15,7 @@ const SECURITY_HEADERS = {
 const PORT = Number(process.env.PORT || 3000);
 const HOST = "0.0.0.0";
 const PUBLIC_DIR = path.join(__dirname, "public");
-const MAX_TEXT_LENGTH = 5000000; // ~5MB to support encrypted file uploads
+const MAX_TEXT_LENGTH = 12000000; // ~12MB to support encrypted file uploads (5MB raw → ~9MB after double base64)
 const MAX_AUTHOR_NAME = 50;
 const DEFAULT_EXPIRES_IN_MS = 2 * 60 * 1000;
 const ALLOWED_EXPIRES_IN_MS = new Set([10 * 1000, 30 * 1000, DEFAULT_EXPIRES_IN_MS, 10 * 60 * 1000, 0]);
@@ -288,7 +288,11 @@ function handleClientAction(client, action) {
 
   if (action.type === "create") {
     const safeText = String(action.text || "");
-    const text = safeText.length > MAX_TEXT_LENGTH ? safeText.slice(0, MAX_TEXT_LENGTH) : safeText;
+    if (safeText.length > MAX_TEXT_LENGTH) {
+      sendJson(client.socket, { type: 'error', message: 'Message too large. Maximum file size is 5MB.' });
+      return;
+    }
+    const text = safeText;
     if (!text) return;
 
     const expiresInMs = parseExpiresInMs(action.expiresInMs);
@@ -319,10 +323,17 @@ function handleClientAction(client, action) {
   if (action.type === "update") {
     removeExpiredMessages(room);
     const safeUpdateText = String(action.text || "");
-    const text = safeUpdateText.length > MAX_TEXT_LENGTH ? safeUpdateText.slice(0, MAX_TEXT_LENGTH) : safeUpdateText;
+    if (safeUpdateText.length > MAX_TEXT_LENGTH) {
+      sendJson(client.socket, { type: 'error', message: 'Message too large. Maximum file size is 5MB.' });
+      return;
+    }
+    const text = safeUpdateText;
     const message = room.messages.find((item) => item.id === action.id);
     if (!message || !text) return;
     if (message.authorId !== client.id) return; // Only author can edit
+    
+    const EDIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+    if (Date.now() - message.createdAt > EDIT_WINDOW_MS) return; // Edit window expired
 
     message.text = text;
     message.updatedAt = Date.now();

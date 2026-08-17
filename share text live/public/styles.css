@@ -1963,3 +1963,95 @@ textarea {
 .qr-scanner-success {
   background: rgba(16, 185, 129, 0.9) !important;
 }
+
+/* ── Own Message Styling ── */
+.message-card.is-own {
+  border-left: 3px solid var(--accent, #6366f1);
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.message-card.is-own:hover {
+  border-color: var(--accent, #6366f1);
+  border-left-color: var(--accent, #6366f1);
+}
+
+[data-theme="light"] .message-card.is-own {
+  background: rgba(99, 102, 241, 0.05);
+  border-left-color: var(--accent, #6366f1);
+}
+
+/* ── Delete Confirmation Overlay ── */
+.delete-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  border-radius: var(--border-radius, 10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.delete-confirm-box {
+  text-align: center;
+  padding: 16px 24px;
+}
+
+.delete-confirm-box p {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.delete-confirm-hint {
+  display: block;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 14px;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.delete-confirm-cancel {
+  padding: 7px 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.delete-confirm-cancel:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.delete-confirm-yes {
+  padding: 7px 18px;
+  border-radius: 8px;
+  border: none;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.delete-confirm-yes:hover {
+  background: #dc2626;
+}
