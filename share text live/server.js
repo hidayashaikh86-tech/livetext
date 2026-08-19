@@ -16,7 +16,6 @@ const PORT = Number(process.env.PORT || 3000);
 const HOST = "0.0.0.0";
 const PUBLIC_DIR = path.join(__dirname, "public");
 const MAX_TEXT_LENGTH = 12000000; // ~12MB to support encrypted file uploads (5MB raw → ~9MB after double base64)
-const MAX_AUTHOR_NAME = 50;
 const DEFAULT_EXPIRES_IN_MS = 2 * 60 * 1000;
 const ALLOWED_EXPIRES_IN_MS = new Set([10 * 1000, 30 * 1000, DEFAULT_EXPIRES_IN_MS, 10 * 60 * 1000, 0]);
 const TYPING_STALE_MS = 4500;
@@ -230,15 +229,6 @@ function tryParseFrame(buffer) {
 
 function cleanText(value) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, 500);
-}
-
-function cleanMessageText(value) {
-  return String(value || "")
-    .replace(/\r\n/g, "\n")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{4,}/g, "\n\n\n")
-    .trim()
-    .slice(0, MAX_TEXT_LENGTH);
 }
 
 function parseExpiresInMs(value) {

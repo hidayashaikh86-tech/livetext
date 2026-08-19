@@ -788,6 +788,24 @@ function send(payload) {
   return true;
 }
 
+async function waitForConnection(timeoutMs = 8000) {
+  if (socket && socket.readyState === WebSocket.OPEN && isConnected) {
+    return true;
+  }
+  if (!socket || socket.readyState === WebSocket.CLOSED) {
+    clearTimeout(reconnectTimer);
+    connect();
+  }
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeoutMs) {
+    if (socket && socket.readyState === WebSocket.OPEN && isConnected) {
+      return true;
+    }
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return !!(socket && socket.readyState === WebSocket.OPEN && isConnected);
+}
+
 async function copyText(value, button) {
   const text = String(value || "").trim();
   if (!text) return;
@@ -1506,6 +1524,152 @@ function clearAttachment() {
   updateSendState();
 }
 
+async function sendSingleFile(file, replyToId = null) {
+  if (!file) return false;
+  if (file.size > 5 * 1024 * 1024) {
+    showToast(`"${file.name}" is too large (max 5MB), skipped.`);
+    return false;
+  }
+
+  // 1. Wait for connection (handles mobile sleep/resume during file picker)
+  const connected = await waitForConnection(10000);
+  if (!connected) {
+    showToast("⚠️ Network problem. Waiting for connection...");
+    return false;
+  }
+
+  // 2. Read file to Base64 Data URL
+  const attachment = await new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve({
+      name: file.name || "File",
+      type: file.type || "application/octet-stream",
+      data: e.target.result
+    });
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+
+  if (!attachment || !attachment.data) {
+    showToast(`Could not read "${file.name}"`);
+    return false;
+  }
+
+  const payloadData = JSON.stringify({
+    __v: 1,
+    text: "",
+    file: attachment
+  });
+
+  // 3. Encrypt payload
+  const encryptedText = await encryptText(payloadData);
+  const payload = {
+    type: "create",
+    text: encryptedText,
+    expiresInMs: Number(expirySelect.value)
+  };
+  if (replyToId) {
+    payload.replyTo = replyToId;
+  }
+
+  // 4. Send via WebSocket
+  if (!send(payload)) {
+    return false;
+  }
+
+  // 5. Add optimistic pending message
+  const now = Date.now();
+  const pendingId = "temp-" + now + "-" + Math.random().toString(36).slice(2);
+  const tempMessage = {
+    id: pendingId,
+    text: payloadData,
+    authorId: clientId,
+    authorName: nameInput.value || localStorage.getItem("shareTextLiveName") || "You",
+    authorColor: myColor,
+    replyTo: replyToId,
+    createdAt: now,
+    updatedAt: now,
+    expiresAt: null,
+    isPending: true
+  };
+  pendingMessages.set(pendingId, tempMessage);
+  messages.push(tempMessage);
+  renderMessages();
+
+  setTimeout(() => {
+    if (!pendingMessages.has(pendingId)) return;
+    const msg = pendingMessages.get(pendingId);
+    if (msg) {
+      msg.isFailed = true;
+      msg.isPending = false;
+      renderMessages();
+    }
+  }, 60000);
+
+  return true;
+}
+
+async function sendMultipleFiles(files) {
+  if (!files || !files.length) return;
+
+  const originalBtnContent = shareButton.innerHTML;
+  shareButton.disabled = true;
+  messageInput.disabled = true;
+  if (attachButton) attachButton.disabled = true;
+
+  try {
+    let sentCount = 0;
+    const validFiles = files.filter(f => {
+      if (f.size > 5 * 1024 * 1024) {
+        showToast(`"${f.name}" is too large (max 5MB), skipped.`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      shareButton.innerHTML = `Sending (${i + 1}/${validFiles.length})...`;
+
+      let ok = await sendSingleFile(file, replyingToMessage ? replyingToMessage.id : null);
+      if (!ok) {
+        // Retry once after waiting 1s for connection recovery
+        await new Promise(r => setTimeout(r, 1000));
+        ok = await sendSingleFile(file, replyingToMessage ? replyingToMessage.id : null);
+      }
+
+      if (ok) {
+        sentCount++;
+        // Small delay between uploads to allow WebSocket buffer to flush smoothly on mobile
+        await new Promise(r => setTimeout(r, 350));
+      } else {
+        showToast(`Failed to send "${file.name}". Network error.`);
+      }
+    }
+
+    if (sentCount > 0) {
+      setReplyingTo(null);
+      if (sentCount === validFiles.length) {
+        showToast(sentCount === 1 ? "File sent!" : `All ${sentCount} files sent!`);
+      } else {
+        showToast(`${sentCount} of ${validFiles.length} files sent.`);
+      }
+      setTimeout(scrollToBottom, 50);
+    }
+  } catch (err) {
+    console.error("Error sending multiple files:", err);
+    showToast("Error sending files. Please try again.");
+  } finally {
+    shareButton.innerHTML = originalBtnContent;
+    shareButton.disabled = false;
+    messageInput.disabled = false;
+    if (attachButton) attachButton.disabled = false;
+    updateSendState();
+  }
+}
+
 if (attachButton && fileInput) {
   attachButton.addEventListener("click", () => fileInput.click());
 
@@ -1522,30 +1686,18 @@ if (attachButton && fileInput) {
   
   fileInput.addEventListener("change", async (e) => {
     const files = Array.from(e.target.files);
+    fileInput.value = ""; // Reset immediately
     if (!files.length) return;
 
     if (files.length === 1) {
       // Single file: attach normally, let user add text and press send
       await processFile(files[0]);
+      messageInput.focus();
     } else {
-      // Multiple files: send each as a separate message immediately
-      for (const file of files) {
-        if (file.size > 3 * 1024 * 1024) {
-          showToast(`"${file.name}" is too large (max 3MB), skipped.`);
-          continue;
-        }
-        await processFile(file);
-        // Auto-submit with current attachment
-        if (currentAttachment) {
-          messageForm.requestSubmit();
-          // Small delay between sends to avoid flooding
-          await new Promise(r => setTimeout(r, 300));
-        }
-      }
+      // Multiple files: send sequentially with progress and connection safety
+      await sendMultipleFiles(files);
+      messageInput.focus();
     }
-
-    fileInput.value = ""; // Reset
-    messageInput.focus(); // Move focus to text input so Enter sends
   });
 }
 
@@ -1603,17 +1755,7 @@ document.addEventListener("drop", async (e) => {
     if (files.length === 1) {
       await processFile(files[0]);
     } else {
-      for (const file of files) {
-        if (file.size > 5 * 1024 * 1024) {
-          showToast(`"${file.name}" is too large (max 5MB), skipped.`);
-          continue;
-        }
-        await processFile(file);
-        if (currentAttachment) {
-          messageForm.requestSubmit();
-          await new Promise(r => setTimeout(r, 300));
-        }
-      }
+      await sendMultipleFiles(files);
     }
   }
 });
@@ -1791,8 +1933,6 @@ newRoomButton.addEventListener("click", () => {
     // switchRoom resets state and calls connect(), but we already have the crypto key set
     // so we pass skipCrypto via a temporary flag to avoid re-running setupCryptoKey
     const prevKey = roomCryptoKey;
-    const origSetup = window.__skipCryptoSetup;
-    window.__skipCryptoSetup = true;
 
     // Reset state manually then call connect directly to avoid key overwrite
     clearTimeout(reconnectTimer);
@@ -1934,7 +2074,9 @@ messageForm.addEventListener("submit", async (event) => {
     payload.replyTo = replyingToMessage.id;
   }
 
-  if (!send(payload)) {
+  // Wait for connection if recovering from sleep/background
+  const connected = await waitForConnection(6000);
+  if (!connected || !send(payload)) {
     showToast("⚠️ Waiting for the live connection before sharing.");
     shareButton.innerHTML = originalBtnContent;
     shareButton.disabled = false;
@@ -2140,7 +2282,8 @@ async function startVoiceRecording() {
       expiresInMs: Number(expirySelect.value)
     };
 
-    if (!send(payload)) {
+    const connected = await waitForConnection(6000);
+    if (!connected || !send(payload)) {
       showToast("⚠️ Waiting for connection before sending voice note.");
       shareButton.innerHTML = originalBtnContent;
       shareButton.disabled = false;
@@ -2683,6 +2826,23 @@ async function showBrowserNotification(message) {
 
 connect();
 setInterval(updateCountdowns, 1000);
+
+// Auto-reconnect on mobile tab resume / focus (e.g. returning from file picker)
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    if (!socket || socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) {
+      clearTimeout(reconnectTimer);
+      connect();
+    }
+  }
+});
+
+window.addEventListener("focus", () => {
+  if (!socket || socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) {
+    clearTimeout(reconnectTimer);
+    connect();
+  }
+});
 
 // Register Service Worker for PWA + Notifications
 if ('serviceWorker' in navigator) {
