@@ -1427,12 +1427,18 @@ function updateOwnLivePreview() {
   livePreviewText.innerHTML = parseMarkdown(text);
 }
 
+let lastTypingSentText = "";
+let lastTypingSentTime = 0;
+
 async function sendTypingSoon() {
   clearTimeout(typingTimer);
   const text = messageInput.value;
   typingTimer = setTimeout(async () => {
+    if (text === lastTypingSentText && Date.now() - lastTypingSentTime < 2000) return;
+    lastTypingSentText = text;
+    lastTypingSentTime = Date.now();
     send({ type: "typing", text: await encryptText(text) });
-  }, 120);
+  }, 250);
 }
 
 function renderPeople(users, count) {

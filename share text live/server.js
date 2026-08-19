@@ -21,7 +21,7 @@ const ALLOWED_EXPIRES_IN_MS = new Set([10 * 1000, 30 * 1000, DEFAULT_EXPIRES_IN_
 const TYPING_STALE_MS = 4500;
 
 const RATE_LIMIT_WINDOW_MS = 10000; // 10 seconds
-const RATE_LIMIT_MAX_MESSAGES = 25; // max messages per window
+const RATE_LIMIT_MAX_MESSAGES = 40; // max messages per 10s window (supports bulk file uploads)
 const MAX_CONNECTIONS_PER_IP = 10;
 const MAX_TOTAL_CONNECTIONS = 500;
 
@@ -262,14 +262,22 @@ function removeExpiredMessages(room) {
 function handleClientAction(client, action) {
   if (!action || typeof action !== "object") return;
   
-  // Rate limiting
+  // Rate limiting: Separate lightweight typing events from state-modifying actions
   const now = Date.now();
-  client.rateLimitTimestamps = (client.rateLimitTimestamps || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
-  if (client.rateLimitTimestamps.length >= RATE_LIMIT_MAX_MESSAGES) {
-    sendJson(client.socket, { type: 'error', message: 'Rate limited. Please slow down.' });
-    return;
+  if (action.type === "typing") {
+    client.typingTimestamps = (client.typingTimestamps || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+    if (client.typingTimestamps.length >= 60) {
+      return; // Silently drop excessive typing updates without error toast
+    }
+    client.typingTimestamps.push(now);
+  } else {
+    client.rateLimitTimestamps = (client.rateLimitTimestamps || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+    if (client.rateLimitTimestamps.length >= RATE_LIMIT_MAX_MESSAGES) {
+      sendJson(client.socket, { type: 'error', message: 'Rate limited. Please slow down.' });
+      return;
+    }
+    client.rateLimitTimestamps.push(now);
   }
-  client.rateLimitTimestamps.push(now);
 
   const room = getRoom(client.roomId);
 
