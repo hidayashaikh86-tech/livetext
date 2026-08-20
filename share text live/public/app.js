@@ -1829,9 +1829,25 @@ if (showQrBtn) {
   });
 }
 
+const closeQrModalX = document.querySelector("#close-qr-modal-x");
 if (closeQrModal) {
   closeQrModal.addEventListener("click", () => {
     qrModal.classList.add("hidden");
+    qrModal.setAttribute("aria-hidden", "true");
+  });
+}
+if (closeQrModalX) {
+  closeQrModalX.addEventListener("click", () => {
+    qrModal.classList.add("hidden");
+    qrModal.setAttribute("aria-hidden", "true");
+  });
+}
+if (qrModal) {
+  qrModal.addEventListener("click", (e) => {
+    if (e.target === qrModal) {
+      qrModal.classList.add("hidden");
+      qrModal.setAttribute("aria-hidden", "true");
+    }
   });
 }
 
@@ -1976,11 +1992,13 @@ newRoomButton.addEventListener("click", () => {
     showToast(password ? "🔐 Password-protected room created!" : "Private room is ready to share.");
   };
 
+  const pwModalX = document.getElementById("pw-modal-x");
   const closeModal = () => {
     pwModal.classList.add("hidden");
     pwModal.setAttribute("aria-hidden", "true");
     pwConfirm.removeEventListener("click", onConfirm);
     pwCancel.removeEventListener("click", onCancel);
+    if (pwModalX) pwModalX.removeEventListener("click", onCancel);
     pwInput.removeEventListener("keydown", onKeydown);
   };
 
@@ -1990,6 +2008,7 @@ newRoomButton.addEventListener("click", () => {
 
   pwConfirm.addEventListener("click", onConfirm);
   pwCancel.addEventListener("click", onCancel);
+  if (pwModalX) pwModalX.addEventListener("click", onCancel);
   pwInput.addEventListener("keydown", onKeydown);
 });
 
@@ -2498,7 +2517,9 @@ function closeNotifSettings() {
   updateNotifUI();
 }
 
+const notifModalX = document.getElementById("notif-modal-x");
 if (notifSettingsClose) notifSettingsClose.addEventListener("click", closeNotifSettings);
+if (notifModalX) notifModalX.addEventListener("click", closeNotifSettings);
 if (notifSettingsModal) {
   notifSettingsModal.addEventListener("click", (e) => {
     if (e.target === notifSettingsModal) closeNotifSettings();
