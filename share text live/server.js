@@ -44,12 +44,6 @@ const mimeTypes = {
   ".gif": "image/gif"
 };
 
-function requestOrigin(req) {
-  const host = req.headers.host || `${HOST}:${PORT}`;
-  const protocol = req.headers["x-forwarded-proto"] || (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
-  return `${protocol}://${host}`;
-}
-
 function sendJson(socket, payload) {
   if (socket.destroyed) return;
 
@@ -418,29 +412,6 @@ function serveFile(req, res) {
     return;
   }
 
-  if (requestedPath === "/robots.txt") {
-    const origin = requestOrigin(req);
-    res.writeHead(200, { "Content-Type": mimeTypes[".txt"], ...SECURITY_HEADERS });
-    res.end(["User-agent: *", "Allow: /", `Sitemap: ${origin}/sitemap.xml`, ""].join("\n"));
-    return;
-  }
-
-  if (requestedPath === "/sitemap.xml") {
-    const origin = requestOrigin(req);
-    res.writeHead(200, { "Content-Type": mimeTypes[".xml"], ...SECURITY_HEADERS });
-    res.end(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${origin}/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-</urlset>
-`);
-    return;
-  }
-
-
   const safePath = path.normalize(decodeURIComponent(requestedPath)).replace(/^(\.\.[/\\])+/, "");
   const filePath = path.join(PUBLIC_DIR, safePath);
 
@@ -459,9 +430,8 @@ function serveFile(req, res) {
 
     const contentType = mimeTypes[path.extname(filePath)] || "application/octet-stream";
     
-    // Ensure the service worker and HTML are never HTTP-cached, 
-    // so updates to sw.js are fetched immediately.
-    const cacheHeaders = (filePath.endsWith('sw.js') || filePath.endsWith('.html')) 
+    // Ensure service worker, HTML, sitemap, and robots are never HTTP-cached
+    const cacheHeaders = (filePath.endsWith('sw.js') || filePath.endsWith('.html') || filePath.endsWith('.xml') || filePath.endsWith('.txt')) 
       ? { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0' }
       : {};
 
