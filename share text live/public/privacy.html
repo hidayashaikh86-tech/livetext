@@ -84,7 +84,15 @@
         <li>Fingerprinting or behavioral tracking</li>
         <li>Any form of cross-site tracking</li>
       </ul>
-      <p>The only local storage used is to save your chosen display name between sessions. This data never leaves your device and can be cleared by clearing your browser's local storage.</p>
+      <p>Shareli uses your browser's localStorage to save the following preferences locally on your device:</p>
+      <ul>
+        <li><strong>Display name</strong> — your chosen nickname for chat rooms</li>
+        <li><strong>Theme preference</strong> — dark or light mode selection</li>
+        <li><strong>Notification settings</strong> — sound, browser notification, and mute preferences</li>
+        <li><strong>Room admin tokens</strong> — encrypted tokens that identify you as the creator of private rooms you created</li>
+        <li><strong>Message drafts</strong> — unsent text is temporarily saved so you don't lose it on page refresh</li>
+      </ul>
+      <p>None of this data is ever transmitted to our server. It stays entirely on your device and can be cleared at any time by clearing your browser's site data.</p>
 
       <h2>4. Server Logs</h2>
       <p>Our hosting provider (Render) may collect basic server access logs (IP address, request timestamps, HTTP status codes) as part of normal infrastructure operation. These logs are managed by Render under their own privacy policy and are not used by Shareli for any purpose.</p>
@@ -92,13 +100,22 @@
       <h2>5. Third-Party Services</h2>
       <p>Shareli loads fonts from Google Fonts and syntax highlighting libraries from CDN providers. These external requests may result in your IP address being visible to those providers. No personal data is shared with these services by Shareli.</p>
 
-      <h2>6. Children's Privacy</h2>
+      <h2>6. Browser Permissions</h2>
+      <p>Shareli may request the following optional browser permissions:</p>
+      <ul>
+        <li><strong>Notifications</strong> — to alert you of new messages when the browser tab is in the background. You can enable or disable this in the notification settings menu.</li>
+        <li><strong>Microphone</strong> — to record encrypted voice notes. Microphone access is requested only when you tap the voice note button and is never accessed in the background.</li>
+        <li><strong>Camera</strong> — used exclusively for the built-in QR code scanner to join rooms. Camera access is requested only when you open the scanner and is never accessed in the background.</li>
+      </ul>
+      <p>All permissions are optional and can be revoked at any time in your browser settings.</p>
+
+      <h2>7. Children's Privacy</h2>
       <p>Shareli is not directed at children under the age of 13. We do not knowingly collect any data from children.</p>
 
-      <h2>7. Changes to This Policy</h2>
+      <h2>8. Changes to This Policy</h2>
       <p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated date. Continued use of Shareli after changes constitutes acceptance of the updated policy.</p>
 
-      <h2>8. Contact</h2>
+      <h2>9. Contact</h2>
       <p>If you have any questions about this Privacy Policy, please <a href="/contact.html">contact us</a>.</p>
 
       <footer class="page-footer">

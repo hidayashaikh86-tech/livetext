@@ -65,6 +65,187 @@
       <p>Shareli uses the <strong>WebCrypto API</strong> (AES-GCM 256-bit encryption) built directly into your browser. When you send a message, it is encrypted on your device before it is transmitted. The encryption key lives only in the room URL — our server never sees it and never stores your message content.</p>
       <p>This means even if someone intercepted the data on our server, they would only see encrypted gibberish. Only people with your room link can decrypt and read the messages.</p>
 
+      <h2>Security Architecture</h2>
+      <p><strong>Cipher:</strong> AES-GCM 256-bit encryption via the native browser WebCrypto API (<code>window.crypto.subtle</code>). Each message gets a unique random 12-byte Initialization Vector (IV), ensuring identical plaintext produces different ciphertext every time.</p>
+      <p><strong>Key Derivation for Password Rooms:</strong> PBKDF2 with SHA-256 and 100,000 iterations. The salt is derived from the room ID, making brute-force attacks computationally expensive.</p>
+      <p><strong>Key Distribution:</strong> The encryption key lives exclusively in the URL hash fragment (<code>#key=...</code>). Per HTTP standard RFC 3986, URL hash fragments are processed client-side only and are <strong>never transmitted to the server</strong> in HTTP requests, headers, or WebSocket handshakes. This means the server physically cannot access the decryption key.</p>
+      <p><strong>Zero-Knowledge Server:</strong> The server receives, stores (in RAM only), and broadcasts encrypted ciphertext. It has no mechanism to decrypt any message, file, voice note, or typing indicator. Even the server operator cannot read user content.</p>
+      <p><strong>Public Room Transparency:</strong> The Public Room uses a shared static key for convenience. It is intentionally designed as an open, unencrypted space (similar to a public IRC channel). For private communication, users should always create a Private Room.</p>
+
+      <h2>Every Feature, Built In</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="icon">🔐</div>
+          <h3>End-to-End Encryption</h3>
+          <p>AES-GCM 256-bit. Server never sees your content.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🎤</div>
+          <h3>Encrypted Voice Notes</h3>
+          <p>Record and send audio messages, fully encrypted.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📎</div>
+          <h3>File &amp; Image Sharing</h3>
+          <p>Share files up to 5MB with inline image preview and lightbox.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📤</div>
+          <h3>Multi-File Upload</h3>
+          <p>Send up to 15+ files at once with progress tracking and auto-retry.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">⏱️</div>
+          <h3>Self-Destructing Messages</h3>
+          <p>Timers: 10s, 30s, 2m, 10m, or Keep (6 hours).</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📌</div>
+          <h3>Message Pinning</h3>
+          <p>Pin important messages to the top of the room.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">✏️</div>
+          <h3>Edit &amp; Delete</h3>
+          <p>Edit your own messages. Admins can delete others' messages.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">💬</div>
+          <h3>Real-Time Typing Indicators</h3>
+          <p>See what others are typing, live.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🌗</div>
+          <h3>Dark &amp; Light Theme</h3>
+          <p>Toggle between themes. Preference saved locally.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🔔</div>
+          <h3>Smart Notifications</h3>
+          <p>Browser notifications with customizable sound toggle.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📱</div>
+          <h3>QR Code Sync</h3>
+          <p>Generate and scan QR codes to join rooms instantly.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🔒</div>
+          <h3>Password-Protected Rooms</h3>
+          <p>Set a custom password for extra security.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">👑</div>
+          <h3>Room Admin Controls</h3>
+          <p>Room creators can moderate (delete messages, clear room).</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📋</div>
+          <h3>Markdown &amp; Code Highlighting</h3>
+          <p>Full markdown support with syntax highlighting for 190+ languages.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📲</div>
+          <h3>PWA (Install as App)</h3>
+          <p>Add to home screen for native app-like experience.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📥</div>
+          <h3>Room Export</h3>
+          <p>Export entire room history as a .txt file.</p>
+        </div>
+      </div>
+
+      <h2>Why No Database? By Design.</h2>
+      <p>Most messaging platforms store your conversations in a database — sometimes indefinitely. Shareli takes a fundamentally different approach:</p>
+      <ul style="line-height: 1.75; color: var(--muted); margin-bottom: 16px; padding-left: 20px;">
+        <li style="margin-bottom: 8px;"><strong>RAM-Only Storage:</strong> All messages exist only in the server's temporary memory (RAM). There is no SQL database, no MongoDB, no file-based storage.</li>
+        <li style="margin-bottom: 8px;"><strong>Automatic Cleanup:</strong> When a message's self-destruct timer expires, it is permanently removed from memory. When the server restarts, all data is irreversibly lost.</li>
+        <li style="margin-bottom: 8px;"><strong>No Backups, No Recovery:</strong> This is intentional. If there's nothing stored, there's nothing to breach, subpoena, or leak.</li>
+        <li style="margin-bottom: 8px;"><strong>Ephemeral by Philosophy:</strong> Shareli is designed for the moment — share something now, and let it vanish. If you need permanent storage, use Google Drive or Dropbox.</li>
+      </ul>
+
+      <h2>How Shareli Compares</h2>
+      <table style="width:100%; border-collapse:collapse; margin:24px 0; font-size:0.9rem;">
+        <thead>
+          <tr>
+            <th style="padding:10px 14px; border:1px solid var(--line); text-align:center; background: var(--surface);">Feature</th>
+            <th style="padding:10px 14px; border:1px solid var(--line); text-align:center; background: var(--surface);">Shareli</th>
+            <th style="padding:10px 14px; border:1px solid var(--line); text-align:center; background: var(--surface);">Email to Self</th>
+            <th style="padding:10px 14px; border:1px solid var(--line); text-align:center; background: var(--surface);">Google Drive</th>
+            <th style="padding:10px 14px; border:1px solid var(--line); text-align:center; background: var(--surface);">Pastebin</th>
+            <th style="padding:10px 14px; border:1px solid var(--line); text-align:center; background: var(--surface);">WeTransfer</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">No Account Required</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">End-to-End Encrypted</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">Real-Time Sync</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">Self-Destructing</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">Voice Notes</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">Code Highlighting</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">Zero Data Retention</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">File Sharing</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅ (5MB)</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅ (25MB)</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅ (15GB)</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">❌</td>
+            <td style="padding:10px 14px; border:1px solid var(--line); text-align:center;">✅ (2GB)</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Shareli is not a replacement for cloud storage. It is purpose-built for quick, temporary, private sharing — the kind where you need something transferred right now, securely, and then forgotten.</p>
+
       <div class="feature-grid">
         <div class="feature-card">
           <div class="icon">🔐</div>
