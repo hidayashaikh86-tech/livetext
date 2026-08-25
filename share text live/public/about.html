@@ -72,6 +72,16 @@
       <p><strong>Zero-Knowledge Server:</strong> The server receives, stores (in RAM only), and broadcasts encrypted ciphertext. It has no mechanism to decrypt any message, file, voice note, or typing indicator. Even the server operator cannot read user content.</p>
       <p><strong>Public Room Transparency:</strong> The Public Room uses a shared static key for convenience. It is intentionally designed as an open, unencrypted space (similar to a public IRC channel). For private communication, users should always create a Private Room.</p>
 
+      <h2>Open Source &amp; Verifiable Security</h2>
+      <p>We believe that true privacy requires radical transparency. Shareli's entire codebase is 100% open source and publicly auditable on GitHub: <a href="https://github.com/hidayashaikh86-tech/livetext" target="_blank" rel="noopener noreferrer"><strong>github.com/hidayashaikh86-tech/livetext</strong></a>.</p>
+      <p>You don't need to take our word for it. You can independently verify our security claims in 10 seconds using any browser:</p>
+      <ol style="margin-left: 20px; line-height: 1.8; color: var(--muted); margin-bottom: 24px;">
+        <li>Open your browser Developer Tools (<kbd>F12</kbd> or <kbd>Cmd+Option+I</kbd>).</li>
+        <li>Go to the <strong>Network</strong> tab and filter by <strong>WS</strong> (WebSockets).</li>
+        <li>Send a message in a private room and inspect the transmitted frames. You will observe that only raw AES-GCM ciphertext is transmitted over the wire — plaintext never leaves your device.</li>
+        <li>Inspect the URL: notice that the encryption key is isolated in the URL hash fragment (<code>#key=...</code>), mathematically proving it is never sent to the server per RFC 3986.</li>
+      </ol>
+
       <h2>Every Feature, Built In</h2>
       <div class="feature-grid">
         <div class="feature-card">
@@ -270,7 +280,8 @@
       </div>
 
       <h2>Who Built Shareli?</h2>
-      <p>Shareli was built and is maintained independently. It is a passion project focused on solving a real problem: the lack of a simple, secure, zero-trace tool for quickly sharing information between devices and people.</p>
+      <p>Shareli was created and is actively maintained independently by <strong>Md Hidayatullah Shaikh</strong>. It is an open-source passion project focused on solving a real problem: the lack of a simple, secure, zero-trace tool for quickly sharing text, code, voice notes, and files between devices without sign-ups or permanent cloud storage.</p>
+      <p>You can view the source code, report issues, or contribute on GitHub: <a href="https://github.com/hidayashaikh86-tech/livetext" target="_blank" rel="noopener noreferrer"><strong>github.com/hidayashaikh86-tech/livetext</strong></a>.</p>
       <p>Have feedback or a question? <a href="/contact.html">Contact us here</a>.</p>
 
       <footer class="page-footer">
@@ -280,6 +291,7 @@
         <a href="/privacy.html">Privacy</a>
         <a href="/terms.html">Terms</a>
         <a href="/contact.html">Contact</a>
+        <a href="https://github.com/hidayashaikh86-tech/livetext" target="_blank" rel="noopener noreferrer">GitHub</a>
       </footer>
     </main>
   </body>

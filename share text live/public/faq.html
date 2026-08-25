@@ -63,7 +63,8 @@
         { "@type": "Question", "name": "What browsers and devices are supported?", "acceptedAnswer": { "@type": "Answer", "text": "Shareli works on all modern browsers supporting the WebCrypto API, including Chrome, Safari, Firefox, Edge, Opera, and Brave on any device." } },
         { "@type": "Question", "name": "Can I send voice notes on Shareli?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Click the microphone icon to record a voice note. It is encrypted with AES-GCM 256-bit encryption and sent as an inline audio player." } },
         { "@type": "Question", "name": "How does the QR code feature work?", "acceptedAnswer": { "@type": "Answer", "text": "Every room has a QR code button that generates a scannable code containing the room URL and encryption key, allowing you to instantly join from a phone." } },
-        { "@type": "Question", "name": "What exactly does Shareli's encryption protect against?", "acceptedAnswer": { "@type": "Answer", "text": "It protects against server-side data breaches, network eavesdropping, and server operator access. It does not protect against someone who has your link or takes screenshots." } }
+        { "@type": "Question", "name": "What exactly does Shareli's encryption protect against?", "acceptedAnswer": { "@type": "Answer", "text": "It protects against server-side data breaches, network eavesdropping, and server operator access. It does not protect against someone who has your link or takes screenshots." } },
+        { "@type": "Question", "name": "Is Shareli open source? How can I verify the security claims?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, Shareli is 100% open source on GitHub. Anyone can verify our end-to-end encryption in browser DevTools (Network > WS) to confirm that only encrypted ciphertext is transmitted." } }
       ]
     }
     </script>
@@ -189,6 +190,12 @@
         <p>Shareli's end-to-end encryption protects against: (1) Server-side data breaches — even if the server is hacked, attackers only get encrypted ciphertext. (2) Network eavesdropping — data in transit is encrypted. (3) Server operator access — the operator cannot read messages. It does NOT protect against: (1) Someone who has your room link (they have the key). (2) Screenshots or screen recording by participants. (3) Malware on your own device. Always share room links through secure channels.</p>
       </div>
 
+      <div class="faq-item">
+        <h2>Is Shareli open source? How can I verify the security and privacy claims myself?</h2>
+        <p>Yes. Shareli is 100% open source under the MIT license, and the entire codebase is publicly available on GitHub at <a href="https://github.com/hidayashaikh86-tech/livetext" target="_blank" rel="noopener noreferrer"><strong>github.com/hidayashaikh86-tech/livetext</strong></a>.</p>
+        <p style="margin-top: 8px;">You can independently verify our claims in 10 seconds: press <kbd>F12</kbd> in your browser to open Developer Tools, switch to the <strong>Network</strong> tab, filter by <strong>WS</strong> (WebSocket), and send a message. You will see that the payload transmitted to the server is encrypted ciphertext — plaintext never leaves your device, and the encryption key stays client-side in the URL hash fragment per RFC 3986.</p>
+      </div>
+
       <footer class="page-footer">
         <a href="/">Home</a>
         <a href="/about.html">About</a>
@@ -196,6 +203,7 @@
         <a href="/privacy.html">Privacy</a>
         <a href="/terms.html">Terms</a>
         <a href="/contact.html">Contact</a>
+        <a href="https://github.com/hidayashaikh86-tech/livetext" target="_blank" rel="noopener noreferrer">GitHub</a>
       </footer>
     </main>
   </body>
