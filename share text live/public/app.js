@@ -469,10 +469,22 @@ async function connect(options = {}) {
   }
   queryParams.set("sessionId", sessionId);
 
-  // Developer admin: extract devAdmin token from URL and pass to WebSocket
+  // Developer admin: extract from URL (first time) → save to localStorage → use on every connection
   const urlSearchParams = new URLSearchParams(location.search);
-  const hashParams = new URLSearchParams(location.hash.includes("?") ? location.hash.split("?")[1] : "");
-  const devAdminToken = urlSearchParams.get("devAdmin") || hashParams.get("devAdmin");
+  const hashPart = location.hash.includes("?") ? location.hash.split("?")[1] : "";
+  const hashParams = new URLSearchParams(hashPart);
+  const devAdminFromUrl = urlSearchParams.get("devAdmin") || hashParams.get("devAdmin");
+  
+  if (devAdminFromUrl) {
+    // Save to localStorage so it persists across rooms and page reloads
+    localStorage.setItem("shareli_dev_admin", devAdminFromUrl);
+    // Clean devAdmin from URL to prevent accidental sharing/leaking
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete("devAdmin");
+    window.history.replaceState(null, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+  }
+  
+  const devAdminToken = localStorage.getItem("shareli_dev_admin");
   if (devAdminToken) {
     queryParams.set("devAdmin", devAdminToken);
   }
@@ -1031,10 +1043,13 @@ function renderMessages() {
     }
     author.textContent = message.authorName || "Guest";
     if (message.isDevAdmin) {
+      // Highlight admin name
+      author.style.cssText = "color:#818cf8;font-weight:700;";
+      // Styled verified badge (can't be faked by copying — server-verified only)
       const devBadge = document.createElement("span");
-      devBadge.textContent = " 🛡️";
-      devBadge.title = "Developer";
-      devBadge.style.cssText = "font-size:0.7rem;cursor:default;";
+      devBadge.className = "dev-admin-badge";
+      devBadge.innerHTML = "✓ DEV";
+      devBadge.title = "Verified Developer — Server verified identity";
       author.appendChild(devBadge);
     }
     
@@ -1477,13 +1492,14 @@ function renderPeople(users, count) {
     const baseName = user.id === clientId ? `${user.name} (you)` : user.name;
     
     if (user.isDevAdmin) {
-      // Show dev admin badge
+      // Styled dev admin badge in people list
       name.innerHTML = "";
+      name.style.cssText = "color:#818cf8;font-weight:700;";
       const nameText = document.createTextNode(baseName + " ");
       const badge = document.createElement("span");
-      badge.textContent = "🛡️";
-      badge.title = "Developer";
-      badge.style.cssText = "font-size:0.75rem;cursor:default";
+      badge.className = "dev-admin-badge";
+      badge.innerHTML = "✓ DEV";
+      badge.title = "Verified Developer";
       name.append(nameText, badge);
     } else {
       name.textContent = baseName;
