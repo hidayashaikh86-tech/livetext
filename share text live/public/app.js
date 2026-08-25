@@ -500,6 +500,10 @@ async function connect(options = {}) {
       setConnection("Connected live", "online");
       clientId = payload.clientId;
       isAdmin = !!payload.isAdmin;
+      const isDevAdmin = !!payload.isDevAdmin;
+      if (isDevAdmin) {
+        showToast("🛡️ Developer Admin mode active");
+      }
       currentRoomId = payload.roomId || currentRoomId;
       updateRoomUi();
       
@@ -1018,6 +1022,13 @@ function renderMessages() {
       node.querySelector(".message-text")?.after(failBadge);
     }
     author.textContent = message.authorName || "Guest";
+    if (message.isDevAdmin) {
+      const devBadge = document.createElement("span");
+      devBadge.textContent = " 🛡️";
+      devBadge.title = "Developer";
+      devBadge.style.cssText = "font-size:0.7rem;cursor:default;";
+      author.appendChild(devBadge);
+    }
     
     if (message.replyTo) {
       const parentMsg = messages.find(m => m.id === message.replyTo);
@@ -1455,7 +1466,20 @@ function renderPeople(users, count) {
     avatar.style.background = /^#(?:[0-9a-fA-F]{3}){1,2}$|^hsl\(\s*\d+(?:deg)?[\s,]+\d+%[\s,]+\d+%\s*\)$/.test(uColor) ? uColor : "#6366f1";
 
     const name = document.createElement("span");
-    name.textContent = user.id === clientId ? `${user.name} (you)` : user.name;
+    const baseName = user.id === clientId ? `${user.name} (you)` : user.name;
+    
+    if (user.isDevAdmin) {
+      // Show dev admin badge
+      name.innerHTML = "";
+      const nameText = document.createTextNode(baseName + " ");
+      const badge = document.createElement("span");
+      badge.textContent = "🛡️";
+      badge.title = "Developer";
+      badge.style.cssText = "font-size:0.75rem;cursor:default";
+      name.append(nameText, badge);
+    } else {
+      name.textContent = baseName;
+    }
 
     item.append(avatar, name);
     peopleList.append(item);

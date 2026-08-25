@@ -25,6 +25,26 @@ const RATE_LIMIT_MAX_MESSAGES = 40; // max messages per 10s window (supports bul
 const MAX_CONNECTIONS_PER_IP = 10;
 const MAX_TOTAL_CONNECTIONS = 500;
 
+// Developer admin secret — set via environment variable ADMIN_SECRET
+// e.g. ADMIN_SECRET=mysecret node server.js
+// Access dashboard: /admin?key=mysecret
+// Join any room as dev admin: add ?devAdmin=mysecret to WebSocket URL
+const DEVELOPER_ADMIN_SECRET = process.env.ADMIN_SECRET || null;
+
+// Timing-safe secret comparison (prevents timing attacks that can guess the key character by character)
+function safeCompare(a, b) {
+  if (!a || !b || typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+// Brute-force protection for /admin endpoint
+const adminFailedAttempts = new Map(); // IP -> { count, lastAttempt }
+const ADMIN_MAX_FAILED = 5;           // max failed attempts
+const ADMIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minute lockout
+
 const clients = new Map();
 const rooms = new Map();
 
@@ -114,7 +134,8 @@ function broadcastPresence(roomId) {
     users: roomClients.map((client) => ({
       id: client.id,
       name: client.name,
-      color: client.color
+      color: client.color,
+      isDevAdmin: client.isDevAdmin || false
     }))
   });
 }
@@ -302,6 +323,7 @@ function handleClientAction(client, action) {
       authorId: client.id,
       authorName: client.name,
       authorColor: client.color,
+      isDevAdmin: client.isDevAdmin || false,
       replyTo: action.replyTo ? String(action.replyTo).slice(0, 36) : null,
       createdAt,
       updatedAt: createdAt,
@@ -412,6 +434,157 @@ function serveFile(req, res) {
     return;
   }
 
+  // Admin Action: Force delete a room (POST-style via query params)
+  if (requestedPath === "/admin/action") {
+    const urlParams = new URL(req.url || "/admin/action", `http://${req.headers.host || "localhost"}`);
+    const providedKey = urlParams.searchParams.get("key");
+    const action = urlParams.searchParams.get("action");
+    const targetRoom = urlParams.searchParams.get("room");
+
+    if (!DEVELOPER_ADMIN_SECRET || !safeCompare(providedKey, DEVELOPER_ADMIN_SECRET)) {
+      res.writeHead(403, SECURITY_HEADERS);
+      res.end("Forbidden");
+      return;
+    }
+
+    if (action === "deleteRoom" && targetRoom && targetRoom !== "public") {
+      const room = rooms.get(targetRoom);
+      if (room) {
+        // Notify all users in the room, then disconnect them
+        broadcastToRoom(targetRoom, { type: "clearMessages" });
+        broadcastToRoom(targetRoom, { type: "error", message: "This room has been closed by the administrator." });
+        room.messages.length = 0;
+        rooms.delete(targetRoom);
+      }
+    }
+
+    // Redirect back to dashboard
+    res.writeHead(302, { 'Location': `/admin?key=${encodeURIComponent(providedKey)}`, ...SECURITY_HEADERS });
+    res.end();
+    return;
+  }
+
+  // Developer Admin Dashboard — accessible only with correct secret key
+  if (requestedPath === "/admin") {
+    const urlParams = new URL(req.url || "/admin", `http://${req.headers.host || "localhost"}`);
+    const providedKey = urlParams.searchParams.get("key");
+    const reqIp = req.socket.remoteAddress || 'unknown';
+
+    // Brute-force check: block IP after too many failed attempts
+    const attempt = adminFailedAttempts.get(reqIp);
+    if (attempt && attempt.count >= ADMIN_MAX_FAILED && (Date.now() - attempt.lastAttempt) < ADMIN_LOCKOUT_MS) {
+      res.writeHead(429, { 'Content-Type': mimeTypes['.html'], ...SECURITY_HEADERS });
+      res.end("<!DOCTYPE html><html><head><title>429 Too Many Requests</title></head><body style='font-family:monospace;padding:40px;background:#0d0d12;color:#ef4444'><h2>429 Too Many Requests</h2><p>Too many failed attempts. Try again later.</p></body></html>");
+      return;
+    }
+
+    if (!DEVELOPER_ADMIN_SECRET || !safeCompare(providedKey, DEVELOPER_ADMIN_SECRET)) {
+      // Track failed attempt
+      const prev = adminFailedAttempts.get(reqIp) || { count: 0, lastAttempt: 0 };
+      adminFailedAttempts.set(reqIp, { count: prev.count + 1, lastAttempt: Date.now() });
+      res.writeHead(403, { 'Content-Type': mimeTypes['.html'], ...SECURITY_HEADERS });
+      res.end("<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body style='font-family:monospace;padding:40px;background:#0d0d12;color:#ef4444'><h2>403 Forbidden</h2><p>Invalid or missing admin key.</p></body></html>");
+      return;
+    }
+
+    // Successful login — reset failed attempts for this IP
+    adminFailedAttempts.delete(reqIp);
+
+    const totalUsers = clients.size;
+    const totalRooms = rooms.size;
+    const uptime = process.uptime();
+    const uptimeStr = `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${Math.floor(uptime % 60)}s`;
+    const memUsage = process.memoryUsage();
+    const memMB = (memUsage.rss / 1024 / 1024).toFixed(1);
+
+    // Escape HTML to prevent XSS in admin dashboard
+    const escHtml = (str) => String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    const roomRows = Array.from(rooms.entries()).map(([id, room]) => {
+      const userCount = clientsInRoom(id).length;
+      const msgCount = room.messages.length;
+      const deleteBtn = id !== 'public' 
+        ? `<a href="/admin/action?key=${encodeURIComponent(providedKey)}&action=deleteRoom&room=${encodeURIComponent(id)}" onclick="return confirm('Delete room ${escHtml(id)}? All users will be disconnected.')" style="color:#ef4444;text-decoration:none;font-size:0.8rem;font-weight:600">✕ Delete</a>`
+        : `<span style="color:#555;font-size:0.8rem">—</span>`;
+      return `<tr><td style='padding:8px 12px;border-bottom:1px solid #333'>${escHtml(id)}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${userCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${msgCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;color:${room.adminToken ? "#10b981" : "#9ba1a6"}'>${room.adminToken ? "🔒 Private" : "🌐 Public"}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${deleteBtn}</td></tr>`;
+    }).join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Shareli — Admin Dashboard</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',system-ui,sans-serif;background:#0d0d12;color:#f0f0f5;padding:32px;min-height:100vh}
+    h1{font-size:1.6rem;font-weight:700;margin-bottom:4px}
+    .subtitle{color:#9ba1a6;font-size:0.85rem;margin-bottom:32px}
+    .badge{display:inline-block;background:#6366f1;color:#fff;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:middle}
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:32px}
+    .stat-card{background:#1a1a24;border:1px solid #333344;border-radius:12px;padding:20px}
+    .stat-label{font-size:0.75rem;color:#9ba1a6;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px}
+    .stat-value{font-size:2rem;font-weight:700;color:#f0f0f5}
+    .stat-unit{font-size:0.85rem;color:#9ba1a6;margin-left:4px}
+    h2{font-size:1.1rem;font-weight:600;margin-bottom:12px;color:#f0f0f5}
+    table{width:100%;border-collapse:collapse;background:#1a1a24;border:1px solid #333344;border-radius:12px;overflow:hidden}
+    thead{background:#232330}
+    th{padding:10px 12px;text-align:left;font-size:0.78rem;font-weight:600;color:#9ba1a6;text-transform:uppercase;letter-spacing:0.04em}
+    td{color:#f0f0f5;font-size:0.9rem}
+    .empty{color:#9ba1a6;font-style:italic;padding:20px;text-align:center}
+    .refresh{margin-top:24px;color:#9ba1a6;font-size:0.8rem}
+    .refresh a{color:#6366f1;text-decoration:none}
+    .tag{font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:4px;background:#6366f130;color:#818cf8;margin-left:8px}
+  </style>
+</head>
+<body>
+  <h1>🛡️ Shareli <span class="badge">DEV ADMIN</span></h1>
+  <p class="subtitle">Server Admin Dashboard — Only you can see this page. No message content is exposed.</p>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Active Users</div>
+      <div class="stat-value">${totalUsers}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active Rooms</div>
+      <div class="stat-value">${totalRooms}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Server Uptime</div>
+      <div class="stat-value" style="font-size:1.2rem;padding-top:8px">${uptimeStr}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">RAM Usage</div>
+      <div class="stat-value">${memMB}<span class="stat-unit">MB</span></div>
+    </div>
+  </div>
+
+  <h2>Active Rooms</h2>
+  ${totalRooms === 0 ? `<div class="empty">No active rooms right now.</div>` : `
+  <table>
+    <thead>
+      <tr>
+        <th>Room ID</th>
+        <th style="text-align:center">Users</th>
+        <th style="text-align:center">Messages</th>
+        <th>Type</th>
+        <th style="text-align:center">Action</th>
+      </tr>
+    </thead>
+    <tbody>${roomRows}</tbody>
+  </table>`}
+
+  <p class="refresh">Auto-refreshes every 30s — <a href="/admin?key=${providedKey}">Refresh now</a></p>
+  <script>setTimeout(()=>location.reload(),30000)</script>
+</body>
+</html>`;
+
+    res.writeHead(200, { 'Content-Type': mimeTypes['.html'], ...SECURITY_HEADERS, 'Cache-Control': 'no-store' });
+    res.end(html);
+    return;
+  }
+
   const safePath = path.normalize(decodeURIComponent(requestedPath)).replace(/^(\.\.[/\\])+/, "");
   const filePath = path.join(PUBLIC_DIR, safePath);
 
@@ -478,11 +651,15 @@ server.on("upgrade", (req, socket) => {
 
   const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
   const providedAdminToken = requestUrl.searchParams.get("adminToken");
+  const providedDevSecret = requestUrl.searchParams.get("devAdmin");
   const room = getRoom(requestUrl.searchParams.get("room"), providedAdminToken);
   const sessionId = requestUrl.searchParams.get("sessionId");
   const id = sessionId ? crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16) : crypto.randomUUID();
   
-  const isAdmin = (room.id !== 'public' && room.adminToken && room.adminToken === providedAdminToken) ? true : false;
+  // Developer admin: verified via ADMIN_SECRET env variable (global — works in any room)
+  const isDevAdmin = !!(DEVELOPER_ADMIN_SECRET && safeCompare(providedDevSecret, DEVELOPER_ADMIN_SECRET));
+  // Room admin: verified via room-specific adminToken
+  const isAdmin = isDevAdmin || ((room.id !== 'public' && room.adminToken && room.adminToken === providedAdminToken) ? true : false);
   
   const client = {
     id,
@@ -493,7 +670,8 @@ server.on("upgrade", (req, socket) => {
     color: `hsl(${Math.floor(Math.random() * 360)} 70% 45%)`,
     messageBuffer: [],
     rateLimitTimestamps: [],
-    isAdmin
+    isAdmin,
+    isDevAdmin
   };
 
   clients.set(id, client);
@@ -506,6 +684,7 @@ server.on("upgrade", (req, socket) => {
     pinnedMessageId: room.pinnedMessageId,
     serverTime: Date.now(),
     isAdmin: client.isAdmin,
+    isDevAdmin: client.isDevAdmin,
     hasAdmin: !!room.adminToken
   });
 
