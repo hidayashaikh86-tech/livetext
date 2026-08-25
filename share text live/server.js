@@ -9,7 +9,7 @@ const SECURITY_HEADERS = {
   'Referrer-Policy': 'no-referrer',
   'Permissions-Policy': 'camera=(self), microphone=(self), geolocation=()',
   'X-XSS-Protection': '1; mode=block',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' wss: ws: data: blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; media-src 'self' data: blob:;"
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' wss: ws: data: blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; media-src 'self' data: blob:; form-action 'self';"
 };
 
 const PORT = Number(process.env.PORT || 3000);
@@ -27,8 +27,8 @@ const MAX_TOTAL_CONNECTIONS = 500;
 
 // Developer admin secret — set via environment variable ADMIN_SECRET
 // e.g. ADMIN_SECRET=mysecret node server.js
-// Access dashboard: /admin?key=mysecret
-// Join any room as dev admin: add ?devAdmin=mysecret to WebSocket URL
+// Access dashboard: /admin (login form — cookie-based session)
+// Enter rooms as admin: click "Enter" from dashboard (cookie-based — no secret in URL)
 const DEVELOPER_ADMIN_SECRET = process.env.ADMIN_SECRET || null;
 
 // Timing-safe secret comparison (prevents timing attacks that can guess the key character by character)
@@ -434,14 +434,32 @@ function serveFile(req, res) {
     return;
   }
 
-  // Admin Action: Force delete a room (POST-style via query params)
+  // Admin Action: Force delete a room (cookie-authenticated)
   if (requestedPath === "/admin/action") {
     const urlParams = new URL(req.url || "/admin/action", `http://${req.headers.host || "localhost"}`);
-    const providedKey = urlParams.searchParams.get("key");
     const action = urlParams.searchParams.get("action");
     const targetRoom = urlParams.searchParams.get("room");
+    const cookieHeader = req.headers.cookie || '';
+    const adminCookie = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('shareli_admin='));
+    const tokenValue = adminCookie ? decodeURIComponent(adminCookie.split('=').slice(1).join('=')) : '';
 
-    if (!DEVELOPER_ADMIN_SECRET || !safeCompare(providedKey, DEVELOPER_ADMIN_SECRET)) {
+    // Reuse verifyAdminToken (defined in /admin route below, but we need inline check here)
+    let actionAuthed = false;
+    if (DEVELOPER_ADMIN_SECRET && tokenValue) {
+      const parts = tokenValue.split(':');
+      if (parts.length === 3) {
+        const [prefix, expiresStr, signature] = parts;
+        if (prefix === 'admin') {
+          const expires = parseInt(expiresStr, 10);
+          if (!isNaN(expires) && Date.now() <= expires) {
+            const expectedSig = crypto.createHmac('sha256', DEVELOPER_ADMIN_SECRET).update(`${prefix}:${expiresStr}`).digest('hex');
+            actionAuthed = safeCompare(signature, expectedSig);
+          }
+        }
+      }
+    }
+
+    if (!actionAuthed) {
       res.writeHead(403, SECURITY_HEADERS);
       res.end("Forbidden");
       return;
@@ -450,7 +468,6 @@ function serveFile(req, res) {
     if (action === "deleteRoom" && targetRoom && targetRoom !== "public") {
       const room = rooms.get(targetRoom);
       if (room) {
-        // Notify all users in the room, then disconnect them
         broadcastToRoom(targetRoom, { type: "clearMessages" });
         broadcastToRoom(targetRoom, { type: "error", message: "This room has been closed by the administrator." });
         room.messages.length = 0;
@@ -458,37 +475,199 @@ function serveFile(req, res) {
       }
     }
 
-    // Redirect back to dashboard
-    res.writeHead(302, { 'Location': `/admin?key=${encodeURIComponent(providedKey)}`, ...SECURITY_HEADERS });
+    res.writeHead(302, { 'Location': '/admin', ...SECURITY_HEADERS });
     res.end();
     return;
   }
 
-  // Developer Admin Dashboard — accessible only with correct secret key
-  if (requestedPath === "/admin") {
-    const urlParams = new URL(req.url || "/admin", `http://${req.headers.host || "localhost"}`);
-    const providedKey = urlParams.searchParams.get("key");
+  // Admin Enter Room: Sets a dev-mode cookie and redirects to room (no secret in URL ever)
+  if (requestedPath === "/admin/enter") {
+    const urlParams = new URL(req.url || "/admin/enter", `http://${req.headers.host || "localhost"}`);
+    const targetRoom = urlParams.searchParams.get("room") || "public";
+    const cookieHeader = req.headers.cookie || '';
+    const adminCookie = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('shareli_admin='));
+    const tokenValue = adminCookie ? decodeURIComponent(adminCookie.split('=').slice(1).join('=')) : '';
+
+    // Verify admin session (same logic as /admin/action)
+    let isAuthed = false;
+    if (DEVELOPER_ADMIN_SECRET && tokenValue) {
+      const parts = tokenValue.split(':');
+      if (parts.length === 3) {
+        const [prefix, expiresStr, signature] = parts;
+        if (prefix === 'admin') {
+          const expires = parseInt(expiresStr, 10);
+          if (!isNaN(expires) && Date.now() <= expires) {
+            const expectedSig = crypto.createHmac('sha256', DEVELOPER_ADMIN_SECRET).update(`${prefix}:${expiresStr}`).digest('hex');
+            isAuthed = safeCompare(signature, expectedSig);
+          }
+        }
+      }
+    }
+
+    if (!isAuthed) {
+      res.writeHead(302, { 'Location': '/admin', ...SECURITY_HEADERS });
+      res.end();
+      return;
+    }
+
+    // Generate a dev-mode token (HMAC-signed, 2 hour expiry) for WebSocket auth
+    const devExpires = Date.now() + 2 * 60 * 60 * 1000;
+    const devPayload = `dev:${devExpires}`;
+    const devSignature = crypto.createHmac('sha256', DEVELOPER_ADMIN_SECRET).update(devPayload).digest('hex');
+    const devToken = `${devPayload}:${devSignature}`;
+    const isSecure = req.socket.encrypted || req.headers['x-forwarded-proto'] === 'https';
+
+    // Build redirect URL
+    const redirectUrl = targetRoom === "public" ? "/" : `/?room=${encodeURIComponent(targetRoom)}`;
+
+    res.writeHead(302, {
+      'Location': redirectUrl,
+      'Set-Cookie': `shareli_dev_mode=${encodeURIComponent(devToken)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=7200${isSecure ? '; Secure' : ''}`,
+      ...SECURITY_HEADERS
+    });
+    res.end();
+    return;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  ADMIN AUTHENTICATION — Cookie-based (key never appears in URL/history)
+  // ═══════════════════════════════════════════════════════════════
+
+  // Helper: generate a time-limited admin session token
+  function generateAdminToken() {
+    const expires = Date.now() + 2 * 60 * 60 * 1000; // 2 hours
+    const payload = `admin:${expires}`;
+    const signature = crypto.createHmac('sha256', DEVELOPER_ADMIN_SECRET).update(payload).digest('hex');
+    return `${payload}:${signature}`;
+  }
+
+  // Helper: verify admin session token from cookie
+  function verifyAdminToken(token) {
+    if (!token || !DEVELOPER_ADMIN_SECRET) return false;
+    const parts = token.split(':');
+    if (parts.length !== 3) return false;
+    const [prefix, expiresStr, signature] = parts;
+    if (prefix !== 'admin') return false;
+    const expires = parseInt(expiresStr, 10);
+    if (isNaN(expires) || Date.now() > expires) return false;
+    const expectedSig = crypto.createHmac('sha256', DEVELOPER_ADMIN_SECRET).update(`${prefix}:${expiresStr}`).digest('hex');
+    return safeCompare(signature, expectedSig);
+  }
+
+  // Helper: parse cookies from request
+  function parseCookies(req) {
+    const cookieHeader = req.headers.cookie || '';
+    const cookies = {};
+    cookieHeader.split(';').forEach(c => {
+      const [key, ...val] = c.trim().split('=');
+      if (key) cookies[key.trim()] = decodeURIComponent(val.join('='));
+    });
+    return cookies;
+  }
+
+  // Admin Login: POST form submission (key never in URL)
+  if (requestedPath === "/admin/login" && req.method === "POST") {
     const reqIp = req.socket.remoteAddress || 'unknown';
 
-    // Brute-force check: block IP after too many failed attempts
+    // Brute-force check
     const attempt = adminFailedAttempts.get(reqIp);
     if (attempt && attempt.count >= ADMIN_MAX_FAILED && (Date.now() - attempt.lastAttempt) < ADMIN_LOCKOUT_MS) {
       res.writeHead(429, { 'Content-Type': mimeTypes['.html'], ...SECURITY_HEADERS });
-      res.end("<!DOCTYPE html><html><head><title>429 Too Many Requests</title></head><body style='font-family:monospace;padding:40px;background:#0d0d12;color:#ef4444'><h2>429 Too Many Requests</h2><p>Too many failed attempts. Try again later.</p></body></html>");
+      res.end("<!DOCTYPE html><html><body style='font-family:monospace;padding:40px;background:#0d0d12;color:#ef4444'><h2>429 Too Many Requests</h2><p>Too many failed attempts. Try again in 15 minutes.</p></body></html>");
       return;
     }
 
-    if (!DEVELOPER_ADMIN_SECRET || !safeCompare(providedKey, DEVELOPER_ADMIN_SECRET)) {
-      // Track failed attempt
-      const prev = adminFailedAttempts.get(reqIp) || { count: 0, lastAttempt: 0 };
-      adminFailedAttempts.set(reqIp, { count: prev.count + 1, lastAttempt: Date.now() });
-      res.writeHead(403, { 'Content-Type': mimeTypes['.html'], ...SECURITY_HEADERS });
-      res.end("<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body style='font-family:monospace;padding:40px;background:#0d0d12;color:#ef4444'><h2>403 Forbidden</h2><p>Invalid or missing admin key.</p></body></html>");
+    // Read POST body
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); if (body.length > 1024) req.destroy(); });
+    req.on('end', () => {
+      const formData = new URLSearchParams(body);
+      const providedKey = formData.get('key') || '';
+
+      if (!DEVELOPER_ADMIN_SECRET || !safeCompare(providedKey, DEVELOPER_ADMIN_SECRET)) {
+        const prev = adminFailedAttempts.get(reqIp) || { count: 0, lastAttempt: 0 };
+        adminFailedAttempts.set(reqIp, { count: prev.count + 1, lastAttempt: Date.now() });
+        res.writeHead(302, { 'Location': '/admin?error=1', ...SECURITY_HEADERS });
+        res.end();
+        return;
+      }
+
+      // Success — set session cookie and redirect
+      adminFailedAttempts.delete(reqIp);
+      const token = generateAdminToken();
+      res.writeHead(302, {
+        'Location': '/admin',
+        'Set-Cookie': `shareli_admin=${encodeURIComponent(token)}; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=7200${req.socket.encrypted || req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : ''}`,
+        ...SECURITY_HEADERS
+      });
+      res.end();
+    });
+    return;
+  }
+
+  // Admin Logout
+  if (requestedPath === "/admin/logout") {
+    res.writeHead(302, {
+      'Location': '/admin',
+      'Set-Cookie': 'shareli_admin=; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=0',
+      ...SECURITY_HEADERS
+    });
+    res.end();
+    return;
+  }
+
+  // Developer Admin Dashboard
+  if (requestedPath === "/admin") {
+    const cookies = parseCookies(req);
+    const isAuthenticated = verifyAdminToken(cookies.shareli_admin);
+    const urlParams = new URL(req.url || "/admin", `http://${req.headers.host || "localhost"}`);
+    const hasError = urlParams.searchParams.get("error") === "1";
+
+    // Not authenticated — show login form
+    if (!isAuthenticated) {
+      const loginHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Shareli — Admin Login</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',system-ui,sans-serif;background:#0d0d12;color:#f0f0f5;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+    .login-box{background:#1a1a24;border:1px solid #333344;border-radius:16px;padding:40px;max-width:380px;width:100%}
+    h1{font-size:1.3rem;font-weight:700;margin-bottom:4px;text-align:center}
+    .subtitle{color:#9ba1a6;font-size:0.82rem;margin-bottom:28px;text-align:center}
+    label{font-size:0.78rem;font-weight:600;color:#9ba1a6;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:6px}
+    input[type="password"]{width:100%;padding:12px 16px;background:#232330;border:1px solid #333344;border-radius:10px;color:#f0f0f5;font-size:0.95rem;outline:none;transition:border 0.2s}
+    input[type="password"]:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,0.15)}
+    button{width:100%;padding:12px;margin-top:16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:0.9rem;font-weight:700;border:none;border-radius:10px;cursor:pointer;transition:opacity 0.2s}
+    button:hover{opacity:0.9}
+    .error{color:#ef4444;font-size:0.82rem;margin-top:12px;text-align:center}
+    .badge{display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:0.6rem;font-weight:800;padding:2px 8px;border-radius:4px;margin-left:6px;vertical-align:middle}
+    .lock{font-size:2rem;text-align:center;margin-bottom:12px}
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <div class="lock">🔐</div>
+    <h1>Shareli <span class="badge">ADMIN</span></h1>
+    <p class="subtitle">Enter your admin secret key to continue.</p>
+    <form method="POST" action="/admin/login" autocomplete="off">
+      <label for="key">Admin Secret Key</label>
+      <input type="password" id="key" name="key" placeholder="Enter your secret key" required autofocus>
+      <button type="submit">Sign In</button>
+    </form>
+    ${hasError ? '<p class="error">❌ Invalid key. Please try again.</p>' : ''}
+  </div>
+</body>
+</html>`;
+
+      res.writeHead(200, { 'Content-Type': mimeTypes['.html'], ...SECURITY_HEADERS, 'Cache-Control': 'no-store' });
+      res.end(loginHtml);
       return;
     }
 
-    // Successful login — reset failed attempts for this IP
-    adminFailedAttempts.delete(reqIp);
+    // Authenticated — show dashboard
 
     const totalUsers = clients.size;
     const totalRooms = rooms.size;
@@ -503,10 +682,11 @@ function serveFile(req, res) {
     const roomRows = Array.from(rooms.entries()).map(([id, room]) => {
       const userCount = clientsInRoom(id).length;
       const msgCount = room.messages.length;
+      const enterBtn = `<a href="/admin/enter?room=${encodeURIComponent(id)}" style="color:#10b981;text-decoration:none;font-size:0.8rem;font-weight:600" title="Enter as dev admin">▶ Enter</a>`;
       const deleteBtn = id !== 'public' 
-        ? `<a href="/admin/action?key=${encodeURIComponent(providedKey)}&action=deleteRoom&room=${encodeURIComponent(id)}" onclick="return confirm('Delete room ${escHtml(id)}? All users will be disconnected.')" style="color:#ef4444;text-decoration:none;font-size:0.8rem;font-weight:600">✕ Delete</a>`
-        : `<span style="color:#555;font-size:0.8rem">—</span>`;
-      return `<tr><td style='padding:8px 12px;border-bottom:1px solid #333'>${escHtml(id)}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${userCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${msgCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;color:${room.adminToken ? "#10b981" : "#9ba1a6"}'>${room.adminToken ? "🔒 Private" : "🌐 Public"}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${deleteBtn}</td></tr>`;
+        ? `<a href="/admin/action?action=deleteRoom&room=${encodeURIComponent(id)}" onclick="return confirm('Delete room ${escHtml(id)}? All users will be disconnected.')" style="color:#ef4444;text-decoration:none;font-size:0.8rem;font-weight:600">✕ Delete</a>`
+        : ``;
+      return `<tr><td style='padding:8px 12px;border-bottom:1px solid #333'>${escHtml(id)}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${userCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${msgCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;color:${room.adminToken ? "#10b981" : "#9ba1a6"}'>${room.adminToken ? "🔒 Private" : "🌐 Public"}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${enterBtn}${deleteBtn ? ' · ' + deleteBtn : ''}</td></tr>`;
     }).join("");
 
     const html = `<!DOCTYPE html>
@@ -575,7 +755,7 @@ function serveFile(req, res) {
     <tbody>${roomRows}</tbody>
   </table>`}
 
-  <p class="refresh">Auto-refreshes every 30s — <a href="/admin?key=${providedKey}">Refresh now</a></p>
+  <p class="refresh">Auto-refreshes every 30s — <a href="/admin">Refresh now</a> · <a href="/admin/logout" style="color:#ef4444">Logout</a></p>
 </body>
 </html>`;
 
@@ -658,8 +838,28 @@ server.on("upgrade", (req, socket) => {
   const sessionId = requestUrl.searchParams.get("sessionId");
   const id = sessionId ? crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16) : crypto.randomUUID();
   
-  // Developer admin: verified via ADMIN_SECRET env variable (global — works in any room)
-  const isDevAdmin = !!(DEVELOPER_ADMIN_SECRET && safeCompare(providedDevSecret, DEVELOPER_ADMIN_SECRET));
+  // Developer admin: check via cookie first (secure), then URL param (legacy fallback)
+  let isDevAdmin = false;
+  if (DEVELOPER_ADMIN_SECRET) {
+    // Method 1: Cookie-based (set by /admin/enter — no secret in URL)
+    const cookieHeader = req.headers.cookie || '';
+    const devCookie = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('shareli_dev_mode='));
+    if (devCookie) {
+      const devToken = decodeURIComponent(devCookie.split('=').slice(1).join('='));
+      const parts = devToken.split(':');
+      if (parts.length === 3 && parts[0] === 'dev') {
+        const expires = parseInt(parts[1], 10);
+        if (!isNaN(expires) && Date.now() <= expires) {
+          const expectedSig = crypto.createHmac('sha256', DEVELOPER_ADMIN_SECRET).update(`dev:${parts[1]}`).digest('hex');
+          isDevAdmin = safeCompare(parts[2], expectedSig);
+        }
+      }
+    }
+    // Method 2: URL param fallback (for localStorage-based legacy flow)
+    if (!isDevAdmin && providedDevSecret) {
+      isDevAdmin = safeCompare(providedDevSecret, DEVELOPER_ADMIN_SECRET);
+    }
+  }
   // Room admin: verified via room-specific adminToken
   const isAdmin = isDevAdmin || ((room.id !== 'public' && room.adminToken && room.adminToken === providedAdminToken) ? true : false);
   
