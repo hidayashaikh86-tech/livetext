@@ -605,11 +605,14 @@ function serveFile(req, res) {
     return;
   }
 
-  // Admin Logout
+  // Admin Logout — clear BOTH admin cookies
   if (requestedPath === "/admin/logout") {
     res.writeHead(302, {
       'Location': '/admin',
-      'Set-Cookie': 'shareli_admin=; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=0',
+      'Set-Cookie': [
+        'shareli_admin=; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=0',
+        'shareli_dev_mode=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0'
+      ],
       ...SECURITY_HEADERS
     });
     res.end();
