@@ -576,12 +576,14 @@ function serveFile(req, res) {
   </table>`}
 
   <p class="refresh">Auto-refreshes every 30s — <a href="/admin?key=${providedKey}">Refresh now</a></p>
-  <script>setTimeout(()=>location.reload(),30000)</script>
 </body>
 </html>`;
 
+    // Add meta refresh tag inside <head> to avoid CSP inline script violation
+    const finalHtml = html.replace('</head>', `  <meta http-equiv="refresh" content="30">\n</head>`);
+
     res.writeHead(200, { 'Content-Type': mimeTypes['.html'], ...SECURITY_HEADERS, 'Cache-Control': 'no-store' });
-    res.end(html);
+    res.end(finalHtml);
     return;
   }
 

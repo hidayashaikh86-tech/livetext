@@ -469,6 +469,14 @@ async function connect(options = {}) {
   }
   queryParams.set("sessionId", sessionId);
 
+  // Developer admin: extract devAdmin token from URL and pass to WebSocket
+  const urlSearchParams = new URLSearchParams(location.search);
+  const hashParams = new URLSearchParams(location.hash.includes("?") ? location.hash.split("?")[1] : "");
+  const devAdminToken = urlSearchParams.get("devAdmin") || hashParams.get("devAdmin");
+  if (devAdminToken) {
+    queryParams.set("devAdmin", devAdminToken);
+  }
+
   const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
   socket = new WebSocket(`${protocol}://${location.host}/${queryString}`);
 
