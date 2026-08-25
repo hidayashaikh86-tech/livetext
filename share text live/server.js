@@ -833,15 +833,13 @@ server.on("upgrade", (req, socket) => {
 
   const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
   const providedAdminToken = requestUrl.searchParams.get("adminToken");
-  const providedDevSecret = requestUrl.searchParams.get("devAdmin");
   const room = getRoom(requestUrl.searchParams.get("room"), providedAdminToken);
   const sessionId = requestUrl.searchParams.get("sessionId");
   const id = sessionId ? crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16) : crypto.randomUUID();
   
-  // Developer admin: check via cookie first (secure), then URL param (legacy fallback)
+  // Developer admin: verified via shareli_dev_mode cookie (set by /admin/enter)
   let isDevAdmin = false;
   if (DEVELOPER_ADMIN_SECRET) {
-    // Method 1: Cookie-based (set by /admin/enter — no secret in URL)
     const cookieHeader = req.headers.cookie || '';
     const devCookie = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('shareli_dev_mode='));
     if (devCookie) {
@@ -854,10 +852,6 @@ server.on("upgrade", (req, socket) => {
           isDevAdmin = safeCompare(parts[2], expectedSig);
         }
       }
-    }
-    // Method 2: URL param fallback (for localStorage-based legacy flow)
-    if (!isDevAdmin && providedDevSecret) {
-      isDevAdmin = safeCompare(providedDevSecret, DEVELOPER_ADMIN_SECRET);
     }
   }
   // Room admin: verified via room-specific adminToken

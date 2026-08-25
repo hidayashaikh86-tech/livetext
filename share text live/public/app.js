@@ -469,25 +469,10 @@ async function connect(options = {}) {
   }
   queryParams.set("sessionId", sessionId);
 
-  // Developer admin: extract from URL (first time) → save to localStorage → use on every connection
-  const urlSearchParams = new URLSearchParams(location.search);
-  const hashPart = location.hash.includes("?") ? location.hash.split("?")[1] : "";
-  const hashParams = new URLSearchParams(hashPart);
-  const devAdminFromUrl = urlSearchParams.get("devAdmin") || hashParams.get("devAdmin");
-  
-  if (devAdminFromUrl) {
-    // Save to localStorage so it persists across rooms and page reloads
-    localStorage.setItem("shareli_dev_admin", devAdminFromUrl);
-    // Clean devAdmin from URL to prevent accidental sharing/leaking
-    const cleanUrl = new URL(window.location.href);
-    cleanUrl.searchParams.delete("devAdmin");
-    window.history.replaceState(null, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
-  }
-  
-  const devAdminToken = localStorage.getItem("shareli_dev_admin");
-  if (devAdminToken) {
-    queryParams.set("devAdmin", devAdminToken);
-  }
+  // Developer admin: handled via shareli_dev_mode cookie (set by /admin/enter)
+  // Cookie is HttpOnly so JS can't read it, but browser sends it automatically
+  // with WebSocket upgrade request. Server verifies the HMAC-signed cookie.
+  // No client-side code needed — admin mode is fully server-verified via cookies.
 
   const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
   socket = new WebSocket(`${protocol}://${location.host}/${queryString}`);
