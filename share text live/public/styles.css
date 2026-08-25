@@ -416,15 +416,28 @@ textarea {
   height: 8px;
   border-radius: 50%;
   background: var(--warning);
+  transition: background 0.3s, box-shadow 0.3s;
 }
 
 .status-dot.online {
   background: #10b981;
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+  animation: none;
 }
 
 .status-dot.offline {
   background: var(--danger);
+  animation: none;
+}
+
+.status-dot.syncing {
+  background: var(--warning);
+  animation: syncPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes syncPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(234, 179, 8, 0.3); }
+  50% { opacity: 0.4; box-shadow: 0 0 12px rgba(234, 179, 8, 0.6); }
 }
 
 .board-tools-dropdown {

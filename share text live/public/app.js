@@ -730,6 +730,7 @@ function setConnection(label, state) {
   if (connectionLabel) connectionLabel.textContent = label;
   statusDot.classList.toggle("online", state === "online");
   statusDot.classList.toggle("offline", state === "offline");
+  statusDot.classList.toggle("syncing", state === "waiting");
 }
 
 function showToast(message) {
