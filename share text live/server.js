@@ -475,6 +475,15 @@ function serveFile(req, res) {
       }
     }
 
+    if (action === "clearChat" && targetRoom) {
+      const room = rooms.get(targetRoom);
+      if (room && room.messages.length > 0) {
+        room.messages.length = 0;
+        room.pinnedMessageId = null;
+        broadcastToRoom(targetRoom, { type: "clearMessages" });
+      }
+    }
+
     res.writeHead(302, { 'Location': '/admin', ...SECURITY_HEADERS });
     res.end();
     return;
@@ -685,11 +694,18 @@ function serveFile(req, res) {
     const roomRows = Array.from(rooms.entries()).map(([id, room]) => {
       const userCount = clientsInRoom(id).length;
       const msgCount = room.messages.length;
-      const enterBtn = `<a href="/admin/enter?room=${encodeURIComponent(id)}" style="color:#10b981;text-decoration:none;font-size:0.8rem;font-weight:600" title="Enter as dev admin">▶ Enter</a>`;
+      // Enter only for public room — no need to enter private rooms (messages are E2E encrypted)
+      const enterBtn = !room.adminToken
+        ? `<a href="/admin/enter?room=${encodeURIComponent(id)}" style="color:#10b981;text-decoration:none;font-size:0.8rem;font-weight:600" title="Enter as dev admin">▶ Enter</a>`
+        : '';
+      const clearBtn = msgCount > 0
+        ? `<a href="/admin/action?action=clearChat&room=${encodeURIComponent(id)}" onclick="return confirm('Clear all ${msgCount} messages in ${escHtml(id)}?')" style="color:#f59e0b;text-decoration:none;font-size:0.8rem;font-weight:600" title="Clear all messages">⟳ Clear</a>`
+        : '';
       const deleteBtn = id !== 'public' 
         ? `<a href="/admin/action?action=deleteRoom&room=${encodeURIComponent(id)}" onclick="return confirm('Delete room ${escHtml(id)}? All users will be disconnected.')" style="color:#ef4444;text-decoration:none;font-size:0.8rem;font-weight:600">✕ Delete</a>`
         : ``;
-      return `<tr><td style='padding:8px 12px;border-bottom:1px solid #333'>${escHtml(id)}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${userCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${msgCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;color:${room.adminToken ? "#10b981" : "#9ba1a6"}'>${room.adminToken ? "🔒 Private" : "🌐 Public"}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${enterBtn}${deleteBtn ? ' · ' + deleteBtn : ''}</td></tr>`;
+      const actions = [enterBtn, clearBtn, deleteBtn].filter(Boolean).join(' · ');
+      return `<tr><td style='padding:8px 12px;border-bottom:1px solid #333'>${escHtml(id)}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${userCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${msgCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;color:${room.adminToken ? "#10b981" : "#9ba1a6"}'>${room.adminToken ? "🔒 Private" : "🌐 Public"}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${actions}</td></tr>`;
     }).join("");
 
     const html = `<!DOCTYPE html>
