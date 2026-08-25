@@ -12,7 +12,7 @@
 ## 🌐 Live Application
 
 - **Primary Web App:** [https://shareli.online](https://shareli.online)
-- **Static Mirror:** [https://shareli.in](https://shareli.in)
+
 
 ---
 
