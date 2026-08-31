@@ -1934,6 +1934,29 @@ if (pwToggle && pwInput) {
   });
 }
 
+// --- First-visit hint badge for "New private" button ---
+(function initHintBadge() {
+  if (!newRoomButton) return;
+  const HINT_KEY = "shareli_hint_seen";
+  if (localStorage.getItem(HINT_KEY)) return; // returning user — skip
+
+  // Show pulsing badge on first visit
+  newRoomButton.classList.add("hint-badge");
+
+  // Remove badge function
+  function dismissHint() {
+    newRoomButton.classList.add("hint-hidden");
+    setTimeout(() => newRoomButton.classList.remove("hint-badge", "hint-hidden"), 400);
+    localStorage.setItem(HINT_KEY, "1");
+  }
+
+  // Dismiss when user clicks the button
+  newRoomButton.addEventListener("click", dismissHint, { once: true });
+
+  // Auto-dismiss after 30 seconds
+  setTimeout(dismissHint, 30000);
+})();
+
 newRoomButton.addEventListener("click", () => {
   if (!pwModal) {
     // Fallback if modal not found
