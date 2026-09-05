@@ -20,6 +20,7 @@ const pwEyeIcon = document.getElementById("pw-eye-icon");
 const pwModalTitle = document.getElementById("pw-modal-title");
 const pwModalDesc = document.getElementById("pw-modal-desc");
 const pwModalLabel = document.getElementById("pw-modal-label");
+const pwModalX = document.getElementById("pw-modal-x");
 const typingPreviews = document.querySelector("#typing-previews");
 const peopleCount = document.querySelector("#people-count");
 const peopleList = document.querySelector("#people-list");
@@ -348,12 +349,27 @@ function promptForPassword() {
       resolve(null); // return null to indicate cancellation
     };
 
-    const onKeydown = (e) => { if (e.key === "Enter") onConfirm(); };
+    const onKeydown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onConfirm();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
+      }
+    };
+
+    const onOverlayClick = (e) => {
+      if (e.target === pwModal) onCancel();
+    };
 
     function cleanup() {
       pwConfirm.removeEventListener("click", onConfirm);
       pwCancel.removeEventListener("click", onCancel);
+      if (pwModalX) pwModalX.removeEventListener("click", onCancel);
       pwInput.removeEventListener("keydown", onKeydown);
+      document.removeEventListener("keydown", onKeydown);
+      pwModal.removeEventListener("click", onOverlayClick);
       pwModal.classList.add("hidden");
       pwModal.setAttribute("aria-hidden", "true");
       // Restore to create-mode defaults
@@ -367,7 +383,10 @@ function promptForPassword() {
 
     pwConfirm.addEventListener("click", onConfirm);
     pwCancel.addEventListener("click", onCancel);
+    if (pwModalX) pwModalX.addEventListener("click", onCancel);
     pwInput.addEventListener("keydown", onKeydown);
+    document.addEventListener("keydown", onKeydown);
+    pwModal.addEventListener("click", onOverlayClick);
     setTimeout(() => pwInput.focus(), 50);
   });
 }
@@ -2049,7 +2068,6 @@ newRoomButton.addEventListener("click", () => {
     showToast(password ? "🔐 Password-protected room created!" : "Private room is ready to share.");
   };
 
-  const pwModalX = document.getElementById("pw-modal-x");
   const closeModal = () => {
     pwModal.classList.add("hidden");
     pwModal.setAttribute("aria-hidden", "true");
@@ -2057,16 +2075,34 @@ newRoomButton.addEventListener("click", () => {
     pwCancel.removeEventListener("click", onCancel);
     if (pwModalX) pwModalX.removeEventListener("click", onCancel);
     pwInput.removeEventListener("keydown", onKeydown);
+    document.removeEventListener("keydown", onDocKeydown);
+    pwModal.removeEventListener("click", onOverlayClick);
   };
 
   const onConfirm = () => createRoom();
   const onCancel = () => closeModal();
-  const onKeydown = (e) => { if (e.key === "Enter") createRoom(); if (e.key === "Escape") closeModal(); };
+  const onKeydown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      createRoom();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closeModal();
+    }
+  };
+  const onDocKeydown = (e) => {
+    if (e.key === "Escape") closeModal();
+  };
+  const onOverlayClick = (e) => {
+    if (e.target === pwModal) closeModal();
+  };
 
   pwConfirm.addEventListener("click", onConfirm);
   pwCancel.addEventListener("click", onCancel);
   if (pwModalX) pwModalX.addEventListener("click", onCancel);
   pwInput.addEventListener("keydown", onKeydown);
+  document.addEventListener("keydown", onDocKeydown);
+  pwModal.addEventListener("click", onOverlayClick);
 });
 
 defaultRoomButton.addEventListener("click", () => {
@@ -2900,6 +2936,8 @@ async function showBrowserNotification(message) {
   if (scanQrBtn) scanQrBtn.addEventListener("click", openScanner);
   if (scanFromQrModal) scanFromQrModal.addEventListener("click", openScanner);
   if (closeScannerBtn) closeScannerBtn.addEventListener("click", closeScanner);
+  const closeQrScannerX = document.getElementById("close-qr-scanner-x");
+  if (closeQrScannerX) closeQrScannerX.addEventListener("click", closeScanner);
 
   // Close on overlay click / Escape
   scannerModal.addEventListener("click", (e) => { if (e.target === scannerModal) closeScanner(); });

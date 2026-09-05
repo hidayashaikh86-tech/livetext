@@ -1449,12 +1449,19 @@ textarea {
   border: none;
   color: var(--muted);
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
+  min-width: 32px;
+  min-height: 32px;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: color 0.15s, background 0.15s;
+  touch-action: manipulation;
+}
+
+.modal-close-icon svg {
+  pointer-events: none;
 }
 
 .modal-close-icon:hover {
