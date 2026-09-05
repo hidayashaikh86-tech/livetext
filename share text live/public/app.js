@@ -340,6 +340,11 @@ function promptForPassword() {
 
     const onConfirm = () => {
       const pw = pwInput.value.trim();
+      if (!pw && pwConfirm.textContent === "Unlock Room") {
+        showToast("Password cannot be empty.");
+        pwInput.focus();
+        return;
+      }
       cleanup();
       resolve(pw);
     };
@@ -390,6 +395,26 @@ function promptForPassword() {
     setTimeout(() => pwInput.focus(), 50);
   });
 }
+
+window.retryPassword = async function() {
+  const newPassword = await promptForPassword();
+  if (newPassword) {
+    roomCryptoKey = await deriveKeyFromPassword(newPassword, currentRoomId);
+    showToast("Password updated. Decrypting...");
+    
+    // Trigger re-decryption of all messages
+    const originalMessages = messages.map(m => ({...m}));
+    messages = [];
+    if (messagesEl) messagesEl.innerHTML = "";
+    
+    // We can't re-decrypt the already decrypted/failed messages because the ciphertext is gone!
+    // We need to fetch history again by reconnecting.
+    connect({ skipCrypto: true });
+  } else {
+    // If they cancel, go to public room
+    window.location.href = "/";
+  }
+};
 
 async function encryptText(plainText) {
   if (!plainText) return plainText;
@@ -1150,6 +1175,17 @@ function renderMessages() {
     // Hide text for voice notes (the player is the content)
     if (attachmentData && attachmentData.type && attachmentData.type.startsWith("audio/")) {
       text.innerHTML = '';
+    } else if (messageContent === "🔒 Encrypted Message" && currentRoomId !== "public") {
+      text.innerHTML = `
+        <div style="padding: 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px;">
+          <p style="margin: 0 0 8px; color: var(--red); font-weight: 500; display: flex; align-items: center; gap: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            Decryption Failed
+          </p>
+          <p style="margin: 0 0 12px; font-size: 0.9rem; opacity: 0.8; line-height: 1.4;">The room password might be incorrect, or this message is corrupted.</p>
+          <button onclick="retryPassword()" class="primary-action" style="padding: 6px 12px; font-size: 0.85rem;">Try Different Password</button>
+        </div>
+      `;
     } else {
       text.innerHTML = parseMarkdown(messageContent);
     }
