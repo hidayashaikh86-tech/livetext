@@ -277,6 +277,12 @@ function removeExpiredMessages(room) {
 function handleClientAction(client, action) {
   if (!action || typeof action !== "object") return;
   
+  // Heartbeat ping: Keep connection alive through college/corporate proxies and sync server clock
+  if (action.type === "ping") {
+    sendJson(client.socket, { type: "pong", serverTime: Date.now() });
+    return;
+  }
+
   // Rate limiting: Separate lightweight typing events from state-modifying actions
   const now = Date.now();
   if (action.type === "typing") {

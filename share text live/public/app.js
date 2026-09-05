@@ -504,10 +504,15 @@ async function connect(options = {}) {
     isConnected = true;
     updateSendState();
     setConnection("Connected live. Syncing...", "waiting");
+    startHeartbeat();
   });
 
   socket.addEventListener("message", async (event) => {
     const payload = JSON.parse(event.data);
+    if (payload.type === "pong") {
+      serverOffset = (payload.serverTime || Date.now()) - Date.now();
+      return;
+    }
     const isAtBottom = boardScrollArea ? (boardScrollArea.scrollHeight - boardScrollArea.scrollTop - boardScrollArea.clientHeight < 100) : false;
 
     if (payload.messages) {
@@ -639,8 +644,31 @@ async function connect(options = {}) {
     }
   });
 
-  socket.addEventListener("close", scheduleReconnect);
-  socket.addEventListener("error", scheduleReconnect);
+  socket.addEventListener("close", () => {
+    stopHeartbeat();
+    scheduleReconnect();
+  });
+  socket.addEventListener("error", () => {
+    stopHeartbeat();
+    scheduleReconnect();
+  });
+}
+
+let heartbeatTimer = null;
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatTimer = setInterval(() => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      send({ type: "ping" });
+    }
+  }, 20000);
+}
+
+function stopHeartbeat() {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
 }
 
 function scheduleReconnect() {
@@ -905,25 +933,53 @@ function updateCountdowns() {
     const bar = card.querySelector(".expiry-bar span");
 
     if (card.classList.contains("is-pending")) {
-      label.textContent = "Sending...";
-      bar.style.width = "100%";
+      if (label) label.textContent = "Sending...";
+      if (bar) bar.style.width = "100%";
       continue;
     }
 
     if (!expiresAt) {
-      label.textContent = "Keep";
-      bar.style.width = "100%";
+      if (label) label.textContent = "Keep";
+      if (bar) bar.style.width = "100%";
       continue;
     }
 
     const remaining = Math.max(0, expiresAt - now);
     const total = Math.max(1, expiresAt - createdAt);
-    label.textContent = formatRemaining(remaining);
-    bar.style.width = `${Math.max(4, Math.round((remaining / total) * 100))}%`;
+    if (label) label.textContent = formatRemaining(remaining);
+    if (bar) bar.style.width = `${Math.max(0, Math.round((remaining / total) * 100))}%`;
+
+    // Client-side auto-cleanup: When countdown reaches 0, show 'Disappearing now' for ~1.2s, then cleanly remove.
+    // This ensures messages never get stuck on screen if network packets drop or server broadcast is delayed.
+    if (remaining <= 0) {
+      const expiredFor = now - expiresAt;
+      if (expiredFor >= 1200 && !card.classList.contains("disappearing")) {
+        card.classList.add("disappearing");
+        setTimeout(() => {
+          const msgId = card.dataset.messageId;
+          card.remove();
+          if (msgId) {
+            messages = messages.filter(m => m.id !== msgId);
+            if (pinnedMessageId === msgId) {
+              pinnedMessageId = null;
+              renderPinnedMessage();
+            }
+            if (messageCount) {
+              messageCount.textContent = `${messages.length} ${messages.length === 1 ? "note" : "notes"}`;
+            }
+          }
+          if (messages.length === 0) {
+            renderMessages();
+          }
+        }, 350);
+      }
+    }
   }
 }
 
 function renderMessages() {
+  const now = nowFromServerClock();
+  messages = messages.filter(m => !m.expiresAt || m.expiresAt > now);
   messagesEl.innerHTML = "";
   if (messageCount) messageCount.textContent = `${messages.length} ${messages.length === 1 ? "note" : "notes"}`;
   if (copyAllButton) copyAllButton.disabled = messages.length === 0;

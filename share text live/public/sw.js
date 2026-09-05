@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shareli-cache-v18';
+const CACHE_NAME = 'shareli-cache-v19';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -51,6 +51,12 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') {
     return;
   }
+
+  // Security & Stability: ONLY intercept HTTP and HTTPS requests.
+  // Ignore chrome-extension://, moz-extension://, data:, blob: to prevent Cache.put failures.
+  if (!event.request.url.startsWith('http://') && !event.request.url.startsWith('https://')) {
+    return;
+  }
   
   // Skip WebSocket connections or API endpoints if any
   if (event.request.url.includes('/socket.io') || event.request.url.includes('ws://') || event.request.url.includes('wss://')) {
@@ -61,16 +67,18 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate' || (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))) {
     event.respondWith(
       fetch(event.request).then((response) => {
-        // Cache the latest version
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
+        // Cache the latest version if successful
+        if (response && response.status === 200 && (response.type === 'basic' || response.type === 'cors')) {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache).catch(() => {});
+          });
+        }
         return response;
       }).catch(() => {
         // Fallback to cache if network fails
         return caches.match(event.request).then((cachedResponse) => {
-          return cachedResponse || caches.match('/index.html');
+          return cachedResponse || caches.match('/index.html') || caches.match('/');
         });
       })
     );
@@ -86,7 +94,7 @@ self.addEventListener('fetch', (event) => {
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse.clone());
+              cache.put(event.request, networkResponse.clone()).catch(() => {});
             });
           }
         }).catch(() => {}); // Ignore background fetch errors
@@ -100,10 +108,17 @@ self.addEventListener('fetch', (event) => {
         }
         const responseToCache = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
+          cache.put(event.request, responseToCache).catch(() => {});
         });
         return networkResponse;
+      }).catch(() => {
+        // Graceful fallback so fetchEvent promise is NEVER rejected unhandled
+        return caches.match(event.request).then((cached) => {
+          return cached || new Response('', { status: 408, statusText: 'Offline or network error' });
+        });
       });
+    }).catch(() => {
+      return new Response('', { status: 408, statusText: 'Offline or network error' });
     })
   );
 });
