@@ -22,8 +22,8 @@ const TYPING_STALE_MS = 4500;
 
 const RATE_LIMIT_WINDOW_MS = 10000; // 10 seconds
 const RATE_LIMIT_MAX_MESSAGES = 40; // max messages per 10s window (supports bulk file uploads)
-const MAX_CONNECTIONS_PER_IP = 100; // High limit to allow college/office NAT networks and multiple tabs
-const MAX_TOTAL_CONNECTIONS = 1000;
+const MAX_CONNECTIONS_PER_IP = 200; // High limit to allow college/office NAT networks and multiple tabs
+const MAX_TOTAL_CONNECTIONS = 2000;
 
 // Helper to get real client IP, respecting Cloudflare & reverse proxies (Render, NGINX)
 function getRequestIp(req) {
