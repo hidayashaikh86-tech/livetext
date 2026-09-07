@@ -1218,15 +1218,34 @@ function renderMessages() {
       text.innerHTML = '';
     } else if (messageContent === "🔒 Encrypted Message" && currentRoomId !== "public") {
       text.innerHTML = `
-        <div style="padding: 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px;">
-          <p style="margin: 0 0 8px; color: var(--red); font-weight: 500; display: flex; align-items: center; gap: 6px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-            Decryption Failed
+        <div style="padding: 16px; background: var(--surface-soft); border: 1px solid var(--danger-soft); border-left: 3px solid var(--danger); border-radius: 8px; margin: 4px 0;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: var(--danger);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600;">Decryption Failed</h4>
+          </div>
+          <p style="margin: 0 0 14px; font-size: 0.85rem; color: var(--muted); line-height: 1.5;">
+            The room password might be incorrect, or this message is corrupted.
           </p>
-          <p style="margin: 0 0 12px; font-size: 0.9rem; opacity: 0.8; line-height: 1.4;">The room password might be incorrect, or this message is corrupted.</p>
-          <button onclick="retryPassword()" class="primary-action" style="padding: 6px 12px; font-size: 0.85rem;">Try Different Password</button>
+          <button class="secondary-action retry-password-btn" style="font-size: 0.8rem; min-height: 30px; padding: 0 12px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+              <path d="M21 2v6h-6"></path>
+              <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+              <path d="M3 22v-6h6"></path>
+              <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+            </svg>
+            Retry Password
+          </button>
         </div>
       `;
+      const retryBtn = text.querySelector('.retry-password-btn');
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+          if (typeof window.retryPassword === 'function') window.retryPassword();
+        });
+      }
     } else {
       text.innerHTML = parseMarkdown(messageContent);
     }
