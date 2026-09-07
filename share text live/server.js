@@ -22,8 +22,22 @@ const TYPING_STALE_MS = 4500;
 
 const RATE_LIMIT_WINDOW_MS = 10000; // 10 seconds
 const RATE_LIMIT_MAX_MESSAGES = 40; // max messages per 10s window (supports bulk file uploads)
-const MAX_CONNECTIONS_PER_IP = 10;
-const MAX_TOTAL_CONNECTIONS = 500;
+const MAX_CONNECTIONS_PER_IP = 100; // High limit to allow college/office NAT networks and multiple tabs
+const MAX_TOTAL_CONNECTIONS = 1000;
+
+// Helper to get real client IP, respecting Cloudflare & reverse proxies (Render, NGINX)
+function getRequestIp(req) {
+  if (req && req.headers) {
+    if (req.headers['cf-connecting-ip']) {
+      return req.headers['cf-connecting-ip'].trim();
+    }
+    const forwarded = req.headers['x-forwarded-for'] || req.headers['x-real-ip'];
+    if (forwarded) {
+      return String(forwarded).split(',')[0].trim();
+    }
+  }
+  return (req && req.socket && req.socket.remoteAddress) || 'unknown';
+}
 
 // Developer admin secret — set via environment variable ADMIN_SECRET
 // e.g. ADMIN_SECRET=mysecret node server.js
@@ -582,7 +596,7 @@ function serveFile(req, res) {
 
   // Admin Login: POST form submission (key never in URL)
   if (requestedPath === "/admin/login" && req.method === "POST") {
-    const reqIp = req.socket.remoteAddress || 'unknown';
+    const reqIp = getRequestIp(req);
 
     // Brute-force check
     const attempt = adminFailedAttempts.get(reqIp);
@@ -829,15 +843,28 @@ server.on("upgrade", (req, socket) => {
   }
 
   // Connection limits
-  const clientIp = req.socket.remoteAddress || 'unknown';
+  const clientIp = getRequestIp(req);
   if (clients.size >= MAX_TOTAL_CONNECTIONS) {
     socket.end('HTTP/1.1 503 Service Unavailable\r\n\r\n');
     return;
   }
-  const ipCount = Array.from(clients.values()).filter(c => c.ip === clientIp).length;
-  if (ipCount >= MAX_CONNECTIONS_PER_IP) {
-    socket.end('HTTP/1.1 429 Too Many Requests\r\n\r\n');
-    return;
+
+  // Whitelist internal/private IPs from per-IP limits (Render proxy router, localhost, 10.x, etc.)
+  const isPrivateOrProxy = 
+    clientIp === 'unknown' || 
+    clientIp === '127.0.0.1' || 
+    clientIp === '::1' || 
+    clientIp === '::ffff:127.0.0.1' ||
+    clientIp.startsWith('10.') || 
+    clientIp.startsWith('192.168.') ||
+    clientIp.startsWith('172.');
+
+  if (!isPrivateOrProxy) {
+    const ipCount = Array.from(clients.values()).filter(c => c.ip === clientIp).length;
+    if (ipCount >= MAX_CONNECTIONS_PER_IP) {
+      socket.end('HTTP/1.1 429 Too Many Requests\r\n\r\n');
+      return;
+    }
   }
 
   const acceptKey = crypto
@@ -861,6 +888,15 @@ server.on("upgrade", (req, socket) => {
   const room = getRoom(requestUrl.searchParams.get("room"), providedAdminToken);
   const sessionId = requestUrl.searchParams.get("sessionId");
   const id = sessionId ? crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16) : crypto.randomUUID();
+
+  // If a connection already exists with this exact sessionId, cleanly terminate the old socket
+  const existingClient = clients.get(id);
+  if (existingClient && existingClient.socket !== socket) {
+    try {
+      existingClient.socket.destroy();
+    } catch (_) {}
+    clients.delete(id);
+  }
   
   // Developer admin: verified via shareli_dev_mode cookie (set by /admin/enter)
   let isDevAdmin = false;
@@ -951,14 +987,20 @@ server.on("upgrade", (req, socket) => {
   });
 
   socket.on("close", () => {
-    clients.delete(id);
+    const current = clients.get(id);
+    if (current && current.socket === socket) {
+      clients.delete(id);
+    }
     room.typingDrafts.delete(id);
     broadcastPresence(room.id);
     broadcastTyping(room);
   });
 
   socket.on("error", () => {
-    clients.delete(id);
+    const current = clients.get(id);
+    if (current && current.socket === socket) {
+      clients.delete(id);
+    }
     room.typingDrafts.delete(id);
     broadcastPresence(room.id);
     broadcastTyping(room);
@@ -966,6 +1008,13 @@ server.on("upgrade", (req, socket) => {
 });
 
 setInterval(() => {
+  // Prune any dead/destroyed sockets from memory
+  for (const [clientId, c] of clients.entries()) {
+    if (c.socket.destroyed || !c.socket.writable) {
+      clients.delete(clientId);
+    }
+  }
+
   for (const room of rooms.values()) {
     if (removeExpiredMessages(room)) {
       broadcastMessages(room);

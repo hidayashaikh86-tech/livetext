@@ -527,6 +527,7 @@ async function connect(options = {}) {
 
   socket.addEventListener("open", () => {
     isConnected = true;
+    reconnectAttempts = 0;
     updateSendState();
     setConnection("Connected live. Syncing...", "waiting");
     startHeartbeat();
@@ -696,9 +697,11 @@ function stopHeartbeat() {
   }
 }
 
+let reconnectAttempts = 0;
 function scheduleReconnect() {
   if (intentionalDisconnect) {
     intentionalDisconnect = false;
+    reconnectAttempts = 0;
     return;
   }
 
@@ -706,7 +709,11 @@ function scheduleReconnect() {
   updateSendState();
   setConnection("Reconnecting...", "offline");
   clearTimeout(reconnectTimer);
-  reconnectTimer = setTimeout(connect, 1200);
+
+  reconnectAttempts += 1;
+  // Exponential backoff: 1.2s, 1.7s, 2.4s, up to 8s max (prevents console spam)
+  const delay = Math.min(1200 * Math.pow(1.4, reconnectAttempts - 1), 8000);
+  reconnectTimer = setTimeout(connect, delay);
 }
 
 function getRoomIdFromUrl() {
