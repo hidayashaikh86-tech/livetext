@@ -1,3 +1,13 @@
+// Fix for mobile browser height issues (URL bar / Keyboard hiding composer panel)
+function setAppHeight() {
+  document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+}
+window.addEventListener('resize', setAppHeight);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', setAppHeight);
+}
+setAppHeight();
+
 const statusDot = document.querySelector("#status-dot");
 const connectionLabel = document.querySelector("#connection-label");
 const nameInput = document.querySelector("#name-input");
@@ -1218,26 +1228,30 @@ function renderMessages() {
       text.innerHTML = '';
     } else if (messageContent === "🔒 Encrypted Message" && currentRoomId !== "public") {
       text.innerHTML = `
-        <div style="padding: 16px; background: var(--surface-soft); border: 1px solid var(--danger-soft); border-left: 3px solid var(--danger); border-radius: 8px; margin: 4px 0;">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: var(--danger);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 16px; background: var(--surface-soft); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; margin-top: 6px;">
+          
+          <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; background: rgba(239, 68, 68, 0.1); color: var(--danger); flex-shrink: 0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             </svg>
-            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600;">Decryption Failed</h4>
           </div>
-          <p style="margin: 0 0 14px; font-size: 0.85rem; color: var(--muted); line-height: 1.5;">
-            The room password might be incorrect, or this message is corrupted.
-          </p>
-          <button class="secondary-action retry-password-btn" style="font-size: 0.8rem; min-height: 30px; padding: 0 12px;">
+          
+          <div style="flex: 1; min-width: 180px;">
+            <div style="font-weight: 600; font-size: 0.95rem; color: var(--ink); margin-bottom: 2px;">Decryption Failed</div>
+            <div style="font-size: 0.85rem; color: var(--muted); line-height: 1.4;">Incorrect password or corrupted data.</div>
+          </div>
+
+          <button class="secondary-action retry-password-btn" style="flex-shrink: 0; font-size: 0.85rem; font-weight: 600; min-height: 36px; padding: 0 16px; border-radius: 8px; background: var(--canvas); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3);">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
               <path d="M21 2v6h-6"></path>
               <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
               <path d="M3 22v-6h6"></path>
               <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
             </svg>
-            Retry Password
+            Retry
           </button>
+          
         </div>
       `;
       const retryBtn = text.querySelector('.retry-password-btn');
