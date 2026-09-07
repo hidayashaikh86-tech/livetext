@@ -886,18 +886,10 @@ server.on("upgrade", (req, socket) => {
   const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
   const providedAdminToken = requestUrl.searchParams.get("adminToken");
   const room = getRoom(requestUrl.searchParams.get("room"), providedAdminToken);
+  const connectionId = crypto.randomUUID();
   const sessionId = requestUrl.searchParams.get("sessionId");
   const id = sessionId ? crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16) : crypto.randomUUID();
 
-  // If a connection already exists with this exact sessionId, cleanly terminate the old socket
-  const existingClient = clients.get(id);
-  if (existingClient && existingClient.socket !== socket) {
-    try {
-      existingClient.socket.destroy();
-    } catch (_) {}
-    clients.delete(id);
-  }
-  
   // Developer admin: verified via shareli_dev_mode cookie (set by /admin/enter)
   let isDevAdmin = false;
   if (DEVELOPER_ADMIN_SECRET) {
@@ -919,6 +911,7 @@ server.on("upgrade", (req, socket) => {
   const isAdmin = isDevAdmin || ((room.id !== 'public' && room.adminToken && room.adminToken === providedAdminToken) ? true : false);
   
   const client = {
+    connectionId,
     id,
     socket,
     ip: clientIp,
@@ -931,7 +924,7 @@ server.on("upgrade", (req, socket) => {
     isDevAdmin
   };
 
-  clients.set(id, client);
+  clients.set(connectionId, client);
   sendJson(socket, {
     type: "hello",
     clientId: id,
@@ -987,20 +980,14 @@ server.on("upgrade", (req, socket) => {
   });
 
   socket.on("close", () => {
-    const current = clients.get(id);
-    if (current && current.socket === socket) {
-      clients.delete(id);
-    }
+    clients.delete(connectionId);
     room.typingDrafts.delete(id);
     broadcastPresence(room.id);
     broadcastTyping(room);
   });
 
   socket.on("error", () => {
-    const current = clients.get(id);
-    if (current && current.socket === socket) {
-      clients.delete(id);
-    }
+    clients.delete(connectionId);
     room.typingDrafts.delete(id);
     broadcastPresence(room.id);
     broadcastTyping(room);

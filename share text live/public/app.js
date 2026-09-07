@@ -575,11 +575,16 @@ async function connect(options = {}) {
       nameInput.value = localStorage.getItem("shareTextLiveName") || payload.name;
       send({ type: "setName", name: nameInput.value });
       restoreDraft();
-      messages = [];
+      
+      // Do NOT wipe messages if reconnecting to the same room — keeps chat stable without flashing
+      if (roomSwitchInProgress || messages.length === 0) {
+        messages = [];
+        renderMessages();
+      }
+      
       typingDrafts = payload.drafts || [];
       pinnedMessageId = payload.pinnedMessageId || null;
       serverOffset = (payload.serverTime || Date.now()) - Date.now();
-      renderMessages();
       renderPinnedMessage();
       renderTypingDrafts();
       scrollToBottom();
@@ -591,7 +596,12 @@ async function connect(options = {}) {
     }
 
     if (payload.type === "history") {
-      messages.push(payload.message);
+      const idx = messages.findIndex(m => m.id === payload.message.id);
+      if (idx !== -1) {
+        messages[idx] = payload.message;
+      } else {
+        messages.push(payload.message);
+      }
       debouncedRenderMessages(isAtBottom);
     }
 
@@ -1012,12 +1022,12 @@ function updateCountdowns() {
 function renderMessages() {
   const now = nowFromServerClock();
   messages = messages.filter(m => !m.expiresAt || m.expiresAt > now);
-  messagesEl.innerHTML = "";
   if (messageCount) messageCount.textContent = `${messages.length} ${messages.length === 1 ? "note" : "notes"}`;
   if (copyAllButton) copyAllButton.disabled = messages.length === 0;
   if (clearRoomButton) clearRoomButton.disabled = messages.length === 0;
 
   if (messages.length === 0) {
+    messagesEl.innerHTML = "";
     const empty = document.createElement("div");
     empty.id = "empty-state";
     empty.style.cssText = "text-align: center; margin: auto; padding: 40px 20px; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;";
@@ -1053,7 +1063,30 @@ function renderMessages() {
     return;
   }
 
+  // Remove empty state if present
+  const emptyState = document.getElementById("empty-state");
+  if (emptyState) emptyState.remove();
+
+  // Smart diffing: remove any DOM cards that are no longer in the messages array
+  const messageIdSet = new Set(messages.map(m => m.id));
+  const existingCards = messagesEl.querySelectorAll(".message-card");
+  for (const card of existingCards) {
+    const cardId = card.dataset.messageId;
+    if (cardId && !messageIdSet.has(cardId)) {
+      card.remove();
+    }
+  }
+
   for (const message of messages) {
+    const existingNode = messagesEl.querySelector(`.message-card[data-message-id="${message.id}"]`);
+    if (existingNode) {
+      const msgUpdatedAt = String(message.updatedAt || message.createdAt || "");
+      if (existingNode.dataset.updatedAt === msgUpdatedAt) {
+        existingNode.classList.toggle("is-pending", !!message.isPending);
+        continue;
+      }
+    }
+
     const node = template.content.firstElementChild.cloneNode(true);
     const avatar = node.querySelector(".avatar");
     const author = node.querySelector(".author");
@@ -1082,6 +1115,7 @@ function renderMessages() {
     node.dataset.createdAt = message.createdAt;
     node.dataset.messageId = message.id;
     node.dataset.expiresAt = message.expiresAt || "";
+    node.dataset.updatedAt = message.updatedAt || message.createdAt || "";
     
     const isOwnMessage = message.authorId === clientId;
     
@@ -1525,7 +1559,11 @@ function renderMessages() {
       dropdown.classList.add('hidden');
     });
 
-    messagesEl.append(node);
+    if (existingNode) {
+      existingNode.replaceWith(node);
+    } else {
+      messagesEl.append(node);
+    }
   }
 
   updateCountdowns();
