@@ -56,7 +56,8 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-body:has(.app-shell) {
+body:has(.app-shell),
+html:has(.app-shell) {
   overflow: hidden;
 }
 
@@ -224,11 +225,15 @@ textarea {
   margin-bottom: 6px;
 }
 
-/* Layout */
+/* Layout — app-shell is a fixed full-screen container (Telegram Web approach) */
 .app-shell {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--app-height, 100%);
   display: flex;
   width: 100%;
-  height: var(--app-height, 100%);
 }
 
 /* Sidebar */

@@ -1,10 +1,13 @@
-// Fix for mobile browser height issues (URL bar / Keyboard hiding composer panel)
+// Mobile keyboard fix: track exact visible height via visualViewport API
+// .app-shell uses `height: var(--app-height)` so it always fits the visible area
 function setAppHeight() {
-  document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.documentElement.style.setProperty('--app-height', `${vh}px`);
 }
 window.addEventListener('resize', setAppHeight);
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', setAppHeight);
+  window.visualViewport.addEventListener('scroll', setAppHeight);
 }
 setAppHeight();
 
@@ -221,13 +224,7 @@ function scrollToBottom() {
   }
 }
 
-// Adjust scroll when virtual keyboard opens (Viewport resize)
-if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', () => {
-    // Small delay to allow layout to settle
-    setTimeout(scrollToBottom, 100);
-  });
-}
+// Scroll is now handled by setAppHeight at top of file — no duplicate listener needed here
 
 // Derives a deterministic AES-256 key from a password + roomId using PBKDF2
 async function deriveKeyFromPassword(password, roomId) {
