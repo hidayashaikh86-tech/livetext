@@ -688,6 +688,14 @@ async function connect(options = {}) {
     if (payload.type === "error") {
       showToast(payload.message || "Something went wrong.");
     }
+
+    if (payload.type === "muted") {
+      handleMuted(payload);
+    }
+
+    if (payload.type === "systemNotice") {
+      showSystemNotice(payload.message);
+    }
   });
 
   socket.addEventListener("close", () => {
@@ -842,7 +850,72 @@ function showToast(message) {
 }
 
 function updateSendState() {
+  // If user is currently muted, keep controls disabled
+  if (window._mutedUntil && Date.now() < window._mutedUntil) {
+    shareButton.disabled = true;
+    messageInput.disabled = true;
+    return;
+  }
   shareButton.disabled = !isConnected || (!messageInput.value.trim() && !currentAttachment);
+}
+
+// Anti-Spam: Handle server mute notification with countdown
+let _muteCountdownTimer = null;
+function handleMuted(payload) {
+  const mutedUntil = payload.mutedUntil || (Date.now() + 60000);
+  window._mutedUntil = mutedUntil;
+
+  // Disable controls immediately
+  shareButton.disabled = true;
+  messageInput.disabled = true;
+  if (attachButton) attachButton.disabled = true;
+
+  // Show initial toast
+  showToast(`⛔ ${payload.message || 'You have been muted for spamming.'}`);
+
+  // Clear any previous countdown
+  if (_muteCountdownTimer) clearInterval(_muteCountdownTimer);
+
+  // Start countdown timer on the send button
+  const originalBtnContent = shareButton.innerHTML;
+  _muteCountdownTimer = setInterval(() => {
+    const remaining = Math.ceil((mutedUntil - Date.now()) / 1000);
+    if (remaining <= 0) {
+      // Mute expired — re-enable everything
+      clearInterval(_muteCountdownTimer);
+      _muteCountdownTimer = null;
+      window._mutedUntil = 0;
+      shareButton.innerHTML = originalBtnContent;
+      messageInput.disabled = false;
+      if (attachButton) attachButton.disabled = false;
+      updateSendState();
+      showToast("✅ You can send messages again.");
+    } else {
+      shareButton.innerHTML = `⛔ ${remaining}s`;
+    }
+  }, 1000);
+}
+
+// Anti-Spam: Show a system notice in the chat (visible to all users)
+function showSystemNotice(message) {
+  if (!messagesEl || !message) return;
+
+  const notice = document.createElement("div");
+  notice.className = "system-notice";
+  notice.innerHTML = `
+    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 20px; font-size: 0.8rem; color: var(--muted); font-weight: 500;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      ${message}
+    </span>
+  `;
+  notice.style.cssText = "text-align: center; padding: 8px 0; width: 100%;";
+
+  messagesEl.appendChild(notice);
+  scrollToBottom();
 }
 
 function getDraftKey() {

@@ -20,8 +20,12 @@ const DEFAULT_EXPIRES_IN_MS = 2 * 60 * 1000;
 const ALLOWED_EXPIRES_IN_MS = new Set([10 * 1000, 30 * 1000, DEFAULT_EXPIRES_IN_MS, 10 * 60 * 1000, 0]);
 const TYPING_STALE_MS = 4500;
 
-const RATE_LIMIT_WINDOW_MS = 10000; // 10 seconds
-const RATE_LIMIT_MAX_MESSAGES = 40; // max messages per 10s window (supports bulk file uploads)
+// Anti-Spam Configuration
+const SPAM_TEXT_WINDOW_MS = 10000;          // 10-second sliding window for text messages
+const SPAM_TEXT_MAX = 12;                   // Max text messages per 10s window
+const SPAM_FILE_WINDOW_MS = 30000;          // 30-second sliding window for file messages
+const SPAM_FILE_MAX = 15;                   // Max file messages per 30s window
+const SPAM_MUTE_DURATIONS = [60000, 120000]; // Escalating: 1st mute = 60s, 2nd+ mute = 120s
 const MAX_CONNECTIONS_PER_IP = 200; // High limit to allow college/office NAT networks and multiple tabs
 const MAX_TOTAL_CONNECTIONS = 2000;
 
@@ -297,21 +301,89 @@ function handleClientAction(client, action) {
     return;
   }
 
-  // Rate limiting: Separate lightweight typing events from state-modifying actions
+  // Anti-Spam: Typing events have their own lightweight limiter
   const now = Date.now();
   if (action.type === "typing") {
-    client.typingTimestamps = (client.typingTimestamps || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+    client.typingTimestamps = (client.typingTimestamps || []).filter(t => now - t < SPAM_TEXT_WINDOW_MS);
     if (client.typingTimestamps.length >= 60) {
-      return; // Silently drop excessive typing updates without error toast
+      return; // Silently drop excessive typing updates
     }
     client.typingTimestamps.push(now);
-  } else {
-    client.rateLimitTimestamps = (client.rateLimitTimestamps || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
-    if (client.rateLimitTimestamps.length >= RATE_LIMIT_MAX_MESSAGES) {
-      sendJson(client.socket, { type: 'error', message: 'Rate limited. Please slow down.' });
+  }
+
+  // Anti-Spam: Check if user is currently muted (applies to create/update/delete/clear actions)
+  if (action.type === "create" || action.type === "update" || action.type === "delete" || action.type === "clear") {
+    if (client.mutedUntil > now) {
+      const remainingSec = Math.ceil((client.mutedUntil - now) / 1000);
+      sendJson(client.socket, {
+        type: 'muted',
+        message: `You are muted. ${remainingSec} seconds remaining.`,
+        mutedUntil: client.mutedUntil
+      });
       return;
     }
-    client.rateLimitTimestamps.push(now);
+  }
+
+  // Anti-Spam: Rate check on 'create' messages (only DevAdmin is exempt — room admins are not)
+  if (action.type === "create" && !client.isDevAdmin) {
+    const safeText = String(action.text || "");
+    const isFileMessage = safeText.length > 50000; // Encrypted files are >50KB
+
+    if (isFileMessage) {
+      // File counter: 15 per 30 seconds
+      client.spamFileTimestamps = client.spamFileTimestamps.filter(t => now - t < SPAM_FILE_WINDOW_MS);
+      if (client.spamFileTimestamps.length >= SPAM_FILE_MAX) {
+        sendJson(client.socket, { type: 'error', message: 'Too many files. Please wait a moment.' });
+        return;
+      }
+      client.spamFileTimestamps.push(now);
+    } else {
+      // Text counter: 12 per 10 seconds
+      client.spamTextTimestamps = client.spamTextTimestamps.filter(t => now - t < SPAM_TEXT_WINDOW_MS);
+      if (client.spamTextTimestamps.length >= SPAM_TEXT_MAX) {
+        // STRIKE SYSTEM
+        client.spamWarnings++;
+
+        if (client.spamWarnings >= 2) {
+          // STRIKE 2: MUTE + DELETE all messages from this user
+          const muteDuration = SPAM_MUTE_DURATIONS[Math.min(client.muteCount, SPAM_MUTE_DURATIONS.length - 1)];
+          client.mutedUntil = now + muteDuration;
+          client.muteCount++;
+          client.spamWarnings = 0;
+          client.spamTextTimestamps = [];
+
+          // Delete all messages from this spammer in the room
+          const room = getRoom(client.roomId);
+          const spammerMsgIds = room.messages.filter(m => m.authorId === client.id).map(m => m.id);
+          room.messages = room.messages.filter(m => m.authorId !== client.id);
+
+          // Broadcast deletion to all clients
+          for (const msgId of spammerMsgIds) {
+            broadcastDeleteMessage(room, msgId);
+          }
+
+          // Broadcast system notice to ALL users in the room
+          broadcastToRoom(room.id, {
+            type: 'systemNotice',
+            message: `${client.name} was muted for spamming.`
+          });
+
+          // Tell the spammer they are muted
+          const muteSec = Math.ceil(muteDuration / 1000);
+          sendJson(client.socket, {
+            type: 'muted',
+            message: `You have been muted for ${muteSec} seconds. All your messages have been removed.`,
+            mutedUntil: client.mutedUntil
+          });
+          return;
+        }
+
+        // STRIKE 1: Warning only
+        sendJson(client.socket, { type: 'error', message: '⚠️ Slow down! You are sending too fast.' });
+        return;
+      }
+      client.spamTextTimestamps.push(now);
+    }
   }
 
   const room = getRoom(client.roomId);
@@ -919,7 +991,12 @@ server.on("upgrade", (req, socket) => {
     name: `Guest ${String(clients.size + 1).padStart(2, "0")}`,
     color: `hsl(${Math.floor(Math.random() * 360)} 70% 45%)`,
     messageBuffer: [],
-    rateLimitTimestamps: [],
+    // Anti-spam tracking
+    spamTextTimestamps: [],   // Text message send times (10s window)
+    spamFileTimestamps: [],   // File message send times (30s window)
+    spamWarnings: 0,          // Strike counter: 0 → warning, 1 → mute
+    muteCount: 0,             // How many times muted (for escalation: 1st=60s, 2nd+=120s)
+    mutedUntil: 0,            // Timestamp when mute expires
     isAdmin,
     isDevAdmin
   };
