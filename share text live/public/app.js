@@ -55,7 +55,6 @@ const closeQrModal = document.querySelector("#close-qr-modal");
 const qrcodeContainer = document.querySelector("#qrcode-container");
 
 // Theme & Notification Elements
-const themeToggle = document.getElementById("theme-toggle");
 const notifToggle = document.getElementById("notif-toggle");
 
 if (launchNotice) {
@@ -2759,16 +2758,20 @@ function updateThemeLabel() {
   label.textContent = isLight ? "Switch to dark mode" : "Switch to light mode";
 }
 
-if (themeToggle) {
-  themeToggle.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const isLight = document.documentElement.getAttribute("data-theme") === "light";
-    const newTheme = isLight ? "dark" : "light";
-    document.documentElement.setAttribute("data-theme", newTheme);
-    localStorage.setItem("shareli-theme", newTheme);
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", newTheme === "light" ? "#f5f5f7" : "#0d0d12");
-    updateThemeLabel();
+const themeToggles = document.querySelectorAll(".theme-toggle");
+
+if (themeToggles.length > 0) {
+  themeToggles.forEach(toggle => {
+    toggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isLight = document.documentElement.getAttribute("data-theme") === "light";
+      const newTheme = isLight ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", newTheme);
+      localStorage.setItem("shareli-theme", newTheme);
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", newTheme === "light" ? "#f5f5f7" : "#0d0d12");
+      updateThemeLabel();
+    });
   });
 }
 
