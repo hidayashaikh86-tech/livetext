@@ -1,15 +1,5 @@
-// Mobile keyboard fix: track exact visible height via visualViewport API
-// .app-shell uses `height: var(--app-height)` so it always fits the visible area
-function setAppHeight() {
-  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  document.documentElement.style.setProperty('--app-height', `${vh}px`);
-}
-window.addEventListener('resize', setAppHeight);
-if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', setAppHeight);
-  window.visualViewport.addEventListener('scroll', setAppHeight);
-}
-setAppHeight();
+// JS viewport hacks removed in favor of standard CSS position: fixed; inset: 0;
+// which natively handles iOS/Android keyboard shifts without jumping or lagging.
 
 const statusDot = document.querySelector("#status-dot");
 const connectionLabel = document.querySelector("#connection-label");
@@ -223,7 +213,7 @@ function scrollToBottom() {
   }
 }
 
-// Scroll is now handled by setAppHeight at top of file — no duplicate listener needed here
+// Viewport resize is handled natively by CSS (position: fixed; inset: 0) — no JS listener needed
 
 // Derives a deterministic AES-256 key from a password + roomId using PBKDF2
 async function deriveKeyFromPassword(password, roomId) {

@@ -66,6 +66,19 @@ const ADMIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minute lockout
 const clients = new Map();
 const rooms = new Map();
 
+// Daily unique visitor tracking (resets each day)
+let dailyVisitors = new Set();
+let dailyVisitorDate = new Date().toDateString();
+
+function trackVisitor(ip) {
+  const today = new Date().toDateString();
+  if (today !== dailyVisitorDate) {
+    dailyVisitors = new Set();
+    dailyVisitorDate = today;
+  }
+  dailyVisitors.add(ip);
+}
+
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -125,11 +138,21 @@ function getRoom(roomId, adminToken = null) {
       messages: [],
       typingDrafts: new Map(),
       pinnedMessageId: null,
-      adminToken: adminToken || null
+      adminToken: adminToken || null,
+      createdAt: Date.now()
     });
   }
 
-  return rooms.get(id);
+  const room = rooms.get(id);
+
+  // Safe upgrade: if room was just auto-created as public (no messages, no users)
+  // and now the real creator provides an adminToken, upgrade it to Private.
+  // Never upgrade an active public room (has messages or users) — prevents hijacking.
+  if (!room.adminToken && adminToken && room.messages.length === 0 && clientsInRoom(id).length === 0) {
+    room.adminToken = adminToken;
+  }
+
+  return room;
 }
 
 function clientsInRoom(roomId) {
@@ -520,6 +543,11 @@ function serveFile(req, res) {
   const pathname = (req.url || "/").split("?")[0] || "/";
   const requestedPath = pathname === "/" ? "/index.html" : pathname;
 
+  // Track unique daily visitors on main page load
+  if (requestedPath === "/index.html") {
+    trackVisitor(getRequestIp(req));
+  }
+
   if (requestedPath === "/health" || requestedPath === "/ping") {
     res.writeHead(200, { 'Content-Type': mimeTypes['.txt'], ...SECURITY_HEADERS });
     res.end("OK");
@@ -775,6 +803,7 @@ function serveFile(req, res) {
 
     const totalUsers = clients.size;
     const totalRooms = rooms.size;
+    const todayVisitors = dailyVisitors.size;
     const uptime = process.uptime();
     const uptimeStr = `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${Math.floor(uptime % 60)}s`;
     const memUsage = process.memoryUsage();
@@ -783,9 +812,24 @@ function serveFile(req, res) {
     // Escape HTML to prevent XSS in admin dashboard
     const escHtml = (str) => String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
+    // Relative time helper (e.g. "3m ago", "2h ago", "1d ago")
+    function timeAgo(ts) {
+      if (!ts) return '—';
+      const diff = Date.now() - ts;
+      const sec = Math.floor(diff / 1000);
+      if (sec < 60) return `${sec}s ago`;
+      const min = Math.floor(sec / 60);
+      if (min < 60) return `${min}m ago`;
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return `${hr}h ago`;
+      const d = Math.floor(hr / 24);
+      return `${d}d ago`;
+    }
+
     const roomRows = Array.from(rooms.entries()).map(([id, room]) => {
       const userCount = clientsInRoom(id).length;
       const msgCount = room.messages.length;
+      const created = timeAgo(room.createdAt);
       // Enter only for public room — no need to enter private rooms (messages are E2E encrypted)
       const enterBtn = !room.adminToken
         ? `<a href="/admin/enter?room=${encodeURIComponent(id)}" style="color:#10b981;text-decoration:none;font-size:0.8rem;font-weight:600" title="Enter as dev admin">▶ Enter</a>`
@@ -797,7 +841,7 @@ function serveFile(req, res) {
         ? `<a href="/admin/action?action=deleteRoom&room=${encodeURIComponent(id)}" onclick="return confirm('Delete room ${escHtml(id)}? All users will be disconnected.')" style="color:#ef4444;text-decoration:none;font-size:0.8rem;font-weight:600">✕ Delete</a>`
         : ``;
       const actions = [enterBtn, clearBtn, deleteBtn].filter(Boolean).join(' · ');
-      return `<tr><td style='padding:8px 12px;border-bottom:1px solid #333'>${escHtml(id)}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${userCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${msgCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;color:${room.adminToken ? "#10b981" : "#9ba1a6"}'>${room.adminToken ? "🔒 Private" : "🌐 Public"}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${actions}</td></tr>`;
+      return `<tr><td style='padding:8px 12px;border-bottom:1px solid #333'>${escHtml(id)}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${userCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${msgCount}</td><td style='padding:8px 12px;border-bottom:1px solid #333;color:${room.adminToken ? "#10b981" : "#9ba1a6"}'>${room.adminToken ? "🔒 Private" : "🌐 Public"}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center;color:#9ba1a6;font-size:0.8rem'>${created}</td><td style='padding:8px 12px;border-bottom:1px solid #333;text-align:center'>${actions}</td></tr>`;
     }).join("");
 
     const html = `<!DOCTYPE html>
@@ -849,6 +893,10 @@ function serveFile(req, res) {
       <div class="stat-label">RAM Usage</div>
       <div class="stat-value">${memMB}<span class="stat-unit">MB</span></div>
     </div>
+    <div class="stat-card">
+      <div class="stat-label">Today's Visitors</div>
+      <div class="stat-value">${todayVisitors}</div>
+    </div>
   </div>
 
   <h2>Active Rooms</h2>
@@ -860,6 +908,7 @@ function serveFile(req, res) {
         <th style="text-align:center">Users</th>
         <th style="text-align:center">Messages</th>
         <th>Type</th>
+        <th style="text-align:center">Created</th>
         <th style="text-align:center">Action</th>
       </tr>
     </thead>
@@ -916,6 +965,7 @@ server.on("upgrade", (req, socket) => {
 
   // Connection limits
   const clientIp = getRequestIp(req);
+  trackVisitor(clientIp);
   if (clients.size >= MAX_TOTAL_CONNECTIONS) {
     socket.end('HTTP/1.1 503 Service Unavailable\r\n\r\n');
     return;
@@ -979,8 +1029,9 @@ server.on("upgrade", (req, socket) => {
       }
     }
   }
-  // Room admin: verified via room-specific adminToken
-  const isAdmin = isDevAdmin || ((room.id !== 'public' && room.adminToken && room.adminToken === providedAdminToken) ? true : false);
+  // Room admin: verified via room-specific adminToken (timing-safe comparison)
+  const isRoomAdmin = room.id !== 'public' && room.adminToken && providedAdminToken && safeCompare(room.adminToken, providedAdminToken);
+  const isAdmin = isDevAdmin || isRoomAdmin;
   
   const client = {
     connectionId,
@@ -1028,6 +1079,13 @@ server.on("upgrade", (req, socket) => {
 
   socket.on("data", (chunk) => {
     dataBuffer = Buffer.concat([dataBuffer, chunk]);
+
+    // Memory protection: kill connection if buffer grows beyond safe limit (prevents OOM attack)
+    const MAX_BUFFER_SIZE = 15 * 1024 * 1024; // 15MB
+    if (dataBuffer.length > MAX_BUFFER_SIZE) {
+      socket.destroy();
+      return;
+    }
 
     while (dataBuffer.length > 0) {
       const parsed = tryParseFrame(dataBuffer);
