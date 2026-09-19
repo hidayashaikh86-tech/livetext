@@ -978,9 +978,22 @@ async function copyText(value, button) {
   const text = String(value || "").trim();
   if (!text) return;
 
+  const originalHtml = button ? button.innerHTML : null;
+  const isIconBtn = button && (button.classList.contains("icon-action-btn") || !!button.querySelector("svg"));
+
+  const applySuccessFeedback = () => {
+    if (!button) return;
+    if (isIconBtn) {
+      button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      button.title = "Copied!";
+    } else {
+      button.textContent = "Copied";
+    }
+  };
+
   try {
     await navigator.clipboard.writeText(text);
-    if (button) button.textContent = "Copied";
+    applySuccessFeedback();
   } catch {
     const textarea = document.createElement("textarea");
     textarea.value = text;
@@ -991,14 +1004,19 @@ async function copyText(value, button) {
     textarea.select();
     document.execCommand("copy");
     textarea.remove();
-    if (button) button.textContent = "Copied";
+    applySuccessFeedback();
   }
 
   showToast("Copied to clipboard.");
 
   if (button) {
     setTimeout(() => {
-      button.textContent = button.dataset.defaultLabel || "Copy";
+      if (isIconBtn && originalHtml) {
+        button.innerHTML = originalHtml;
+        button.title = button.getAttribute("aria-label") || "Copy";
+      } else {
+        button.textContent = button.dataset.defaultLabel || "Copy";
+      }
     }, 1400);
   }
 }
@@ -2089,6 +2107,20 @@ saveNameButton.addEventListener("click", () => {
   localStorage.setItem("shareTextLiveName", name);
   if (send({ type: "setName", name })) {
     showToast("Display name saved.");
+    if (saveNameButton.classList.contains("icon-action-btn")) {
+      const originalColor = saveNameButton.style.color;
+      saveNameButton.style.color = "#10b981";
+      setTimeout(() => {
+        saveNameButton.style.color = originalColor;
+      }, 1200);
+    }
+  }
+});
+
+nameInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    saveNameButton.click();
   }
 });
 
