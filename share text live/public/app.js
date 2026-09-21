@@ -671,8 +671,16 @@ async function connect(options = {}) {
       if (isAtBottom) scrollToBottom();
     }
 
+    if (payload.type === "broadcast") {
+      showBroadcastAnnouncement(payload.message || "");
+    }
+
     if (payload.type === "error") {
-      showToast(payload.message || "Something went wrong.");
+      if (typeof payload.message === "string" && payload.message.startsWith("📢 [Admin Announcement]:")) {
+        showBroadcastAnnouncement(payload.message.replace(/^📢 \[Admin Announcement\]:\s*/, ""));
+      } else {
+        showToast(payload.message || "Something went wrong.");
+      }
     }
 
     if (payload.type === "muted") {
@@ -903,6 +911,142 @@ function showSystemNotice(message) {
   messagesEl.appendChild(notice);
   scrollToBottom();
 }
+
+// Floating Glassmorphic Broadcast Announcement System (18s timer + Hover-to-Pause)
+let _broadcastInterval = null;
+let _broadcastRemainingMs = 18000;
+let _broadcastTotalMs = 18000;
+let _isBroadcastHovered = false;
+
+function playAnnouncementChime() {
+  if (typeof window.AudioContext !== "undefined" || typeof window.webkitAudioContext !== "undefined") {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContext();
+      
+      // Dual-tone celebratory announcement chime (chord)
+      const playTone = (freq, delay, duration) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+        gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+        gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + delay + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + duration + 0.05);
+      };
+
+      playTone(523.25, 0.0, 0.35);  // C5
+      playTone(659.25, 0.09, 0.38); // E5
+      playTone(783.99, 0.18, 0.55); // G5
+    } catch (e) {
+      // Audio fallback
+    }
+  }
+}
+
+function showBroadcastAnnouncement(message) {
+  if (!message || typeof message !== "string") return;
+
+  const popup = document.getElementById("broadcast-popup");
+  const bodyEl = document.getElementById("broadcast-popup-body");
+  const timerSecEl = document.getElementById("broadcast-timer-sec");
+  const progressBar = document.getElementById("broadcast-progress-bar");
+
+  // 1. Play announcement chime
+  playAnnouncementChime();
+
+  // 2. Add system notice to chat history as well, so it remains visible permanently
+  showSystemNotice(`📢 Official Announcement: ${message}`);
+
+  if (!popup || !bodyEl) {
+    showToast(`📢 ${message}`);
+    return;
+  }
+
+  // 3. Populate popup text
+  bodyEl.textContent = message;
+
+  // 4. Reveal popup
+  popup.classList.remove("hidden");
+
+  // 5. Setup countdown timer (18 seconds default) with Hover-to-Pause
+  _broadcastTotalMs = 18000;
+  _broadcastRemainingMs = _broadcastTotalMs;
+  _isBroadcastHovered = false;
+
+  const hint = popup.querySelector(".broadcast-hint");
+  if (hint) {
+    hint.innerHTML = 'Auto-dismisses in <strong id="broadcast-timer-sec">18</strong>s (hover to pause)';
+  }
+
+  if (progressBar) progressBar.style.width = "100%";
+
+  clearInterval(_broadcastInterval);
+  _broadcastInterval = setInterval(() => {
+    if (_isBroadcastHovered) return;
+
+    _broadcastRemainingMs -= 100;
+    const secEl = document.getElementById("broadcast-timer-sec");
+    if (secEl) {
+      secEl.textContent = Math.ceil(Math.max(0, _broadcastRemainingMs) / 1000);
+    }
+    if (progressBar) {
+      const pct = Math.max(0, (_broadcastRemainingMs / _broadcastTotalMs) * 100);
+      progressBar.style.width = `${pct}%`;
+    }
+
+    if (_broadcastRemainingMs <= 0) {
+      hideBroadcastAnnouncement();
+    }
+  }, 100);
+}
+
+function hideBroadcastAnnouncement() {
+  clearInterval(_broadcastInterval);
+  const popup = document.getElementById("broadcast-popup");
+  if (popup) {
+    popup.classList.add("hidden");
+  }
+}
+
+// Initialize announcement event listeners
+(function initBroadcastPopup() {
+  const popup = document.getElementById("broadcast-popup");
+  const closeBtn = document.getElementById("close-broadcast-btn");
+  const dismissBtn = document.getElementById("dismiss-broadcast-btn");
+
+  if (popup) {
+    popup.addEventListener("mouseenter", () => {
+      _isBroadcastHovered = true;
+      const hint = popup.querySelector(".broadcast-hint");
+      if (hint) hint.innerHTML = "⏸ <strong>Paused</strong> (reading mode)";
+    });
+
+    popup.addEventListener("mouseleave", () => {
+      _isBroadcastHovered = false;
+      const hint = popup.querySelector(".broadcast-hint");
+      if (hint) hint.innerHTML = 'Auto-dismisses in <strong id="broadcast-timer-sec">' + Math.ceil(Math.max(0, _broadcastRemainingMs) / 1000) + '</strong>s (hover to pause)';
+    });
+
+    // Touch support for mobile devices
+    popup.addEventListener("touchstart", () => {
+      _isBroadcastHovered = true;
+      const hint = popup.querySelector(".broadcast-hint");
+      if (hint) hint.innerHTML = "⏸ <strong>Paused</strong> (tap 'Got it' to close)";
+    }, { passive: true });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", hideBroadcastAnnouncement);
+  }
+  if (dismissBtn) {
+    dismissBtn.addEventListener("click", hideBroadcastAnnouncement);
+  }
+})();
 
 function getDraftKey() {
   return `share-text-live:draft:${currentRoomId}`;

@@ -641,7 +641,7 @@ function serveFile(req, res) {
       } else if (action === "broadcast") {
         const msg = String(params.get("message") || "").trim().slice(0, 300);
         if (msg) {
-          broadcastToAll({ type: "error", message: `📢 [Admin Announcement]: ${msg}` });
+          broadcastToAll({ type: "broadcast", message: msg, timestamp: Date.now() });
           successMsg = "broadcasted";
         }
       }

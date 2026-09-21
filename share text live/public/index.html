@@ -499,6 +499,30 @@
     </div>
 
 
+    <!-- Global Admin Broadcast Announcement Card (Top-Center Floating) -->
+    <aside id="broadcast-popup" class="broadcast-popup hidden" aria-live="assertive" role="alert">
+      <div class="broadcast-popup-content">
+        <div class="broadcast-popup-header">
+          <div class="broadcast-badge-group">
+            <span class="broadcast-icon-wrap">📢</span>
+            <span class="broadcast-tag">SYSTEM BROADCAST</span>
+            <span class="broadcast-live-dot" title="Live Announcement"></span>
+          </div>
+          <button id="close-broadcast-btn" class="broadcast-close-btn" type="button" aria-label="Dismiss announcement">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div id="broadcast-popup-body" class="broadcast-popup-body"></div>
+        <div class="broadcast-popup-footer">
+          <span class="broadcast-hint">Auto-dismisses in <strong id="broadcast-timer-sec">18</strong>s (hover to pause)</span>
+          <button id="dismiss-broadcast-btn" class="broadcast-action-btn" type="button">Got it ✓</button>
+        </div>
+        <div class="broadcast-progress-track">
+          <div id="broadcast-progress-bar" class="broadcast-progress-bar"></div>
+        </div>
+      </div>
+    </aside>
+
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     
     <!-- Lightbox Modal for Image Previews -->
