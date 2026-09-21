@@ -1741,20 +1741,22 @@ function renderPeople(users, count) {
     avatar.style.background = /^#(?:[0-9a-fA-F]{3}){1,2}$|^hsl\(\s*\d+(?:deg)?[\s,]+\d+%[\s,]+\d+%\s*\)$/.test(uColor) ? uColor : "#6366f1";
 
     const name = document.createElement("span");
-    const baseName = user.id === clientId ? `${user.name} (you)` : user.name;
-    
+    name.className = "person-name";
+    name.textContent = user.name || "Guest";
+
+    if (user.id === clientId) {
+      const youBadge = document.createElement("span");
+      youBadge.className = "you-badge";
+      youBadge.textContent = "YOU";
+      name.append(document.createTextNode(" "), youBadge);
+    }
+
     if (user.isDevAdmin) {
-      // Styled dev admin badge in people list
-      name.innerHTML = "";
-      name.style.cssText = "color:#818cf8;font-weight:700;";
-      const nameText = document.createTextNode(baseName + " ");
       const badge = document.createElement("span");
       badge.className = "dev-admin-badge";
       badge.innerHTML = "✓ DEV";
       badge.title = "Verified Developer";
-      name.append(nameText, badge);
-    } else {
-      name.textContent = baseName;
+      name.append(document.createTextNode(" "), badge);
     }
 
     item.append(avatar, name);
