@@ -28,6 +28,7 @@ const SPAM_FILE_MAX = 15;                   // Max file messages per 30s window
 const SPAM_MUTE_DURATIONS = [60000, 120000]; // Escalating: 1st mute = 60s, 2nd+ mute = 120s
 const MAX_CONNECTIONS_PER_IP = 200; // High limit to allow college/office NAT networks and multiple tabs
 const MAX_TOTAL_CONNECTIONS = 2000;
+const PRIVATE_ROOM_GRACE_MS = 10 * 60 * 1000; // 10 min grace period before deleting empty private rooms
 
 // Helper to get real client IP, respecting Cloudflare & reverse proxies (Render, NGINX)
 function getRequestIp(req) {
@@ -139,7 +140,8 @@ function getRoom(roomId, adminToken = null) {
       typingDrafts: new Map(),
       pinnedMessageId: null,
       adminToken: adminToken || null,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      lastActiveAt: Date.now()
     });
   }
 
@@ -157,6 +159,27 @@ function getRoom(roomId, adminToken = null) {
 
 function clientsInRoom(roomId) {
   return Array.from(clients.values()).filter((client) => client.roomId === roomId);
+}
+
+function cleanupClient(connectionId, client, room) {
+  if (!clients.has(connectionId)) return;
+  clients.delete(connectionId);
+  if (room) {
+    room.typingDrafts.delete(client.id);
+    broadcastPresence(room.id);
+    broadcastTyping(room);
+
+    // Room cleanup when last user leaves and no messages remain
+    if (room.id !== 'public' && room.messages.length === 0 && clientsInRoom(room.id).length === 0) {
+      if (!room.adminToken) {
+        // Public custom rooms (no owner) → delete immediately
+        rooms.delete(room.id);
+      } else {
+        // Private rooms → mark empty timestamp, let grace period handle deletion
+        room.lastActiveAt = Date.now();
+      }
+    }
+  }
 }
 
 function broadcastToRoom(roomId, payload) {
@@ -454,6 +477,7 @@ function handleClientAction(client, action) {
     };
 
     room.messages.push(message);
+    room.lastActiveAt = Date.now();
     const MAX_MESSAGES_PER_ROOM = 200;
     while (room.messages.length > MAX_MESSAGES_PER_ROOM) {
       room.messages.shift();
@@ -699,7 +723,7 @@ function serveFile(req, res) {
   }
 
   // Admin Login: POST form submission (key never in URL)
-  if (requestedPath === "/admin/login" && req.method === "POST") {
+  if ((requestedPath === "/admin/login" || requestedPath === "/admin") && req.method === "POST") {
     const reqIp = getRequestIp(req);
 
     // Brute-force check
@@ -1319,6 +1343,19 @@ server.on("upgrade", (req, socket) => {
   const sessionId = requestUrl.searchParams.get("sessionId");
   const id = sessionId ? crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16) : crypto.randomUUID();
 
+  // Close and cleanup any existing stale connection from this same session & IP
+  if (sessionId) {
+    for (const [existingConnId, existingClient] of clients.entries()) {
+      if (existingClient.id === id && existingClient.ip === clientIp) {
+        const oldRoom = rooms.get(existingClient.roomId);
+        cleanupClient(existingConnId, existingClient, oldRoom);
+        try {
+          existingClient.socket.destroy();
+        } catch {}
+      }
+    }
+  }
+
   // Developer admin: verified via shareli_dev_mode cookie (set by /admin/enter)
   let isDevAdmin = false;
   if (DEVELOPER_ADMIN_SECRET) {
@@ -1380,6 +1417,7 @@ server.on("upgrade", (req, socket) => {
       message: msg
     });
   });
+  room.lastActiveAt = Date.now();
   broadcastPresence(room.id);
 
   let dataBuffer = Buffer.alloc(0);
@@ -1401,7 +1439,11 @@ server.on("upgrade", (req, socket) => {
       dataBuffer = dataBuffer.subarray(parsed.bytesConsumed);
 
       if (parsed.frame.type === "close") {
-        socket.end();
+        cleanupClient(connectionId, client, room);
+        try {
+          socket.write(Buffer.from([0x88, 0x00]));
+        } catch {}
+        socket.destroy();
         return;
       }
 
@@ -1422,17 +1464,11 @@ server.on("upgrade", (req, socket) => {
   });
 
   socket.on("close", () => {
-    clients.delete(connectionId);
-    room.typingDrafts.delete(id);
-    broadcastPresence(room.id);
-    broadcastTyping(room);
+    cleanupClient(connectionId, client, room);
   });
 
   socket.on("error", () => {
-    clients.delete(connectionId);
-    room.typingDrafts.delete(id);
-    broadcastPresence(room.id);
-    broadcastTyping(room);
+    cleanupClient(connectionId, client, room);
   });
 });
 
@@ -1440,7 +1476,7 @@ setInterval(() => {
   // Prune any dead/destroyed sockets from memory
   for (const [clientId, c] of clients.entries()) {
     if (c.socket.destroyed || !c.socket.writable) {
-      clients.delete(clientId);
+      cleanupClient(clientId, c, rooms.get(c.roomId));
     }
   }
 
@@ -1457,7 +1493,16 @@ setInterval(() => {
 
     // Clean up empty rooms with no connected users
     if (room.id !== 'public' && room.messages.length === 0 && clientsInRoom(room.id).length === 0) {
-      rooms.delete(room.id);
+      if (!room.adminToken) {
+        // Public custom rooms → delete immediately
+        rooms.delete(room.id);
+      } else {
+        // Private rooms → delete only after grace period expires
+        const idleMs = Date.now() - (room.lastActiveAt || room.createdAt);
+        if (idleMs >= PRIVATE_ROOM_GRACE_MS) {
+          rooms.delete(room.id);
+        }
+      }
     }
   }
 }, 1000);

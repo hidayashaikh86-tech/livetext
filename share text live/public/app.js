@@ -482,6 +482,27 @@ async function decryptText(encryptedPayload) {
   }
 }
 
+function disconnect() {
+  clearTimeout(reconnectTimer);
+  stopHeartbeat();
+  if (socket) {
+    intentionalDisconnect = true;
+    const s = socket;
+    socket = null;
+    s.onopen = null;
+    s.onmessage = null;
+    s.onerror = null;
+    s.onclose = null;
+    try {
+      if (s.readyState === WebSocket.OPEN || s.readyState === WebSocket.CONNECTING) {
+        s.close(1000, "leaving_room");
+      }
+    } catch (e) {}
+  }
+  isConnected = false;
+  updateSendState();
+}
+
 async function connect(options = {}) {
   if (!options.skipCrypto) await setupCryptoKey();
   updateRoomUi();
@@ -490,6 +511,12 @@ async function connect(options = {}) {
     showFileMode();
     return;
   }
+
+  // Ensure any existing socket is cleanly disconnected
+  if (socket) {
+    disconnect();
+  }
+  clearTimeout(reconnectTimer);
 
   const protocol = location.protocol === "https:" ? "wss" : "ws";
   
@@ -515,13 +542,15 @@ async function connect(options = {}) {
   // No client-side code needed — admin mode is fully server-verified via cookies.
 
   const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
-  socket = new WebSocket(`${protocol}://${location.host}/${queryString}`);
+  const curSocket = new WebSocket(`${protocol}://${location.host}/${queryString}`);
+  socket = curSocket;
 
   isConnected = false;
   updateSendState();
   setConnection("Connecting...", "waiting");
 
-  socket.addEventListener("open", () => {
+  curSocket.addEventListener("open", () => {
+    if (socket !== curSocket) return;
     isConnected = true;
     reconnectAttempts = 0;
     updateSendState();
@@ -529,7 +558,8 @@ async function connect(options = {}) {
     startHeartbeat();
   });
 
-  socket.addEventListener("message", async (event) => {
+  curSocket.addEventListener("message", async (event) => {
+    if (socket !== curSocket) return;
     const payload = JSON.parse(event.data);
     if (payload.type === "pong") {
       serverOffset = (payload.serverTime || Date.now()) - Date.now();
@@ -692,13 +722,15 @@ async function connect(options = {}) {
     }
   });
 
-  socket.addEventListener("close", () => {
+  curSocket.addEventListener("close", () => {
+    if (socket !== curSocket) return;
     stopHeartbeat();
     scheduleReconnect();
   });
-  socket.addEventListener("error", () => {
+
+  curSocket.addEventListener("error", () => {
+    if (socket !== curSocket) return;
     stopHeartbeat();
-    scheduleReconnect();
   });
 }
 
@@ -819,11 +851,7 @@ function switchRoom(roomId, options = {}) {
   updateOwnLivePreview();
   updateRoomUi();
 
-  if (socket && socket.readyState !== WebSocket.CLOSED) {
-    intentionalDisconnect = true;
-    socket.close();
-  }
-
+  disconnect();
   connect();
 }
 
@@ -2458,10 +2486,7 @@ newRoomButton.addEventListener("click", () => {
     renderPeople([], 0);
     updateOwnLivePreview();
 
-    if (socket && socket.readyState !== WebSocket.CLOSED) {
-      intentionalDisconnect = true;
-      socket.close();
-    }
+    disconnect();
 
     // Restore key (switchRoom->connect would overwrite it)
     roomCryptoKey = prevKey;
