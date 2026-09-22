@@ -122,7 +122,10 @@ function sendJson(socket, payload) {
     );
   }
 
-  socket.write(Buffer.concat([Buffer.from(header), message]));
+  if (!socket || socket.destroyed || !socket.writable) return;
+  try {
+    socket.write(Buffer.concat([Buffer.from(header), message]), () => {});
+  } catch {}
 }
 
 function normalizeRoomId(value) {
@@ -130,7 +133,7 @@ function normalizeRoomId(value) {
   return roomId || "public";
 }
 
-function getRoom(roomId, adminToken = null) {
+function getRoom(roomId, adminToken = null, authHash = null) {
   const id = normalizeRoomId(roomId);
 
   if (!rooms.has(id)) {
@@ -140,6 +143,7 @@ function getRoom(roomId, adminToken = null) {
       typingDrafts: new Map(),
       pinnedMessageId: null,
       adminToken: adminToken || null,
+      authHash: authHash || null,
       createdAt: Date.now(),
       lastActiveAt: Date.now()
     });
@@ -147,11 +151,14 @@ function getRoom(roomId, adminToken = null) {
 
   const room = rooms.get(id);
 
-  // Safe upgrade: if room was just auto-created as public (no messages, no users)
-  // and now the real creator provides an adminToken, upgrade it to Private.
+  // Safe upgrade: if room was just auto-created (no messages, no users)
+  // and now the real creator provides an adminToken or authHash, set them.
   // Never upgrade an active public room (has messages or users) — prevents hijacking.
   if (!room.adminToken && adminToken && room.messages.length === 0 && clientsInRoom(id).length === 0) {
     room.adminToken = adminToken;
+  }
+  if (!room.authHash && authHash && room.messages.length === 0 && clientsInRoom(id).length === 0) {
+    room.authHash = authHash;
   }
 
   return room;
@@ -352,6 +359,14 @@ function handleClientAction(client, action) {
   // Heartbeat ping: Keep connection alive through college/corporate proxies and sync server clock
   if (action.type === "ping") {
     sendJson(client.socket, { type: "pong", serverTime: Date.now() });
+    return;
+  }
+
+  // Security Gate: Unauthenticated clients in private rooms CANNOT perform any action
+  const currentRoom = rooms.get(client.roomId);
+  if (!currentRoom) return;
+  if (currentRoom.id !== "public" && client.isAuthenticated === false) {
+    sendJson(client.socket, { type: "error", message: "Access denied. Valid room authentication required." });
     return;
   }
 
@@ -561,7 +576,7 @@ function handleClientAction(client, action) {
 
   if (action.type === "clear") {
     if (room.id === "public") return; // Public room cannot be cleared
-    if (room.adminToken && !client.isAdmin) return; // Only admin can clear private rooms with an admin
+    if (!client.isAdmin) return; // Only verified room admin or dev admin can clear private rooms
 
     if (room.messages.length === 0) return;
 
@@ -1338,10 +1353,18 @@ server.on("upgrade", (req, socket) => {
 
   const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
   const providedAdminToken = requestUrl.searchParams.get("adminToken");
-  const room = getRoom(requestUrl.searchParams.get("room"), providedAdminToken);
+  const providedAuth = requestUrl.searchParams.get("auth");
+  const room = getRoom(requestUrl.searchParams.get("room"), providedAdminToken, providedAuth);
   const connectionId = crypto.randomUUID();
   const sessionId = requestUrl.searchParams.get("sessionId");
   const id = sessionId ? crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16) : crypto.randomUUID();
+
+  // Authentication check for private room:
+  // If private room has an authHash, client MUST provide matching auth token.
+  let isAuthenticated = true;
+  if (room.id !== 'public' && room.authHash) {
+    isAuthenticated = !!(providedAuth && safeCompare(room.authHash, providedAuth));
+  }
 
   // Close and cleanup any existing stale connection from this same session & IP
   if (sessionId) {
@@ -1373,9 +1396,9 @@ server.on("upgrade", (req, socket) => {
       }
     }
   }
-  // Room admin: verified via room-specific adminToken (timing-safe comparison)
-  const isRoomAdmin = room.id !== 'public' && room.adminToken && providedAdminToken && safeCompare(room.adminToken, providedAdminToken);
-  const isAdmin = isDevAdmin || isRoomAdmin;
+  // Room admin: only valid if client is ALSO authenticated (knows the room password/key)
+  const isRoomAdmin = Boolean(room.id !== 'public' && isAuthenticated && room.adminToken && providedAdminToken && safeCompare(room.adminToken, providedAdminToken));
+  const isAdmin = Boolean((isDevAdmin || isRoomAdmin) && isAuthenticated);
   
   const client = {
     connectionId,
@@ -1383,6 +1406,7 @@ server.on("upgrade", (req, socket) => {
     socket,
     ip: clientIp,
     roomId: room.id,
+    isAuthenticated,
     name: `Guest ${String(clients.size + 1).padStart(2, "0")}`,
     color: `hsl(${Math.floor(Math.random() * 360)} 70% 45%)`,
     messageBuffer: [],
@@ -1396,7 +1420,20 @@ server.on("upgrade", (req, socket) => {
     isDevAdmin
   };
 
+  if (!isAuthenticated) {
+    socket.on("error", () => {});
+    socket.on("close", () => {});
+    sendJson(socket, {
+      type: "authRequired",
+      roomId: room.id,
+      isPasswordProtected: true,
+      message: "Password required to enter this room."
+    });
+    return;
+  }
+
   clients.set(connectionId, client);
+
   sendJson(socket, {
     type: "hello",
     clientId: id,

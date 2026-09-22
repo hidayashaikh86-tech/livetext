@@ -215,6 +215,22 @@ function scrollToBottom() {
 
 // Viewport resize is handled natively by CSS (position: fixed; inset: 0) — no JS listener needed
 
+let currentRoomAuthHash = "";
+
+// Fast one-way SHA-256 hash for zero-knowledge server room authentication
+async function computeAuthHash(secret, roomId) {
+  if (!secret) return "";
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(`shareli-auth-v1:${roomId}:${secret}`);
+    const hashBuffer = await window.crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) {
+    return "";
+  }
+}
+
 // Derives a deterministic AES-256 key from a password + roomId using PBKDF2
 async function deriveKeyFromPassword(password, roomId) {
   const encoder = new TextEncoder();
@@ -243,6 +259,7 @@ async function setupCryptoKey() {
   // SECURITY: Reset the crypto key immediately so no stale key can decrypt
   // messages while the password prompt is visible.
   roomCryptoKey = null;
+  currentRoomAuthHash = "";
 
   if (currentRoomId === "public") {
     // Shared constant key for the public room so everyone can read each other's messages
@@ -269,6 +286,7 @@ async function setupCryptoKey() {
       return;
     }
     roomCryptoKey = await deriveKeyFromPassword(password, currentRoomId);
+    currentRoomAuthHash = await computeAuthHash(password, currentRoomId);
     return;
   }
 
@@ -293,6 +311,7 @@ async function setupCryptoKey() {
     false,
     ["encrypt", "decrypt"]
   );
+  currentRoomAuthHash = await computeAuthHash(keyBase64, currentRoomId);
 }
 
 // Shows a styled password prompt overlay and resolves with the entered password
@@ -396,15 +415,13 @@ window.retryPassword = async function() {
   const newPassword = await promptForPassword();
   if (newPassword) {
     roomCryptoKey = await deriveKeyFromPassword(newPassword, currentRoomId);
-    showToast("Password updated. Decrypting...");
+    currentRoomAuthHash = await computeAuthHash(newPassword, currentRoomId);
+    showToast("Unlocking room...");
     
-    // Trigger re-decryption of all messages
-    const originalMessages = messages.map(m => ({...m}));
     messages = [];
     if (messagesEl) messagesEl.innerHTML = "";
     
-    // We can't re-decrypt the already decrypted/failed messages because the ciphertext is gone!
-    // We need to fetch history again by reconnecting.
+    disconnect();
     connect({ skipCrypto: true });
   } else {
     // If they cancel, go to public room
@@ -533,6 +550,9 @@ async function connect(options = {}) {
     if (adminToken) {
       queryParams.set("adminToken", adminToken);
     }
+    if (currentRoomAuthHash) {
+      queryParams.set("auth", currentRoomAuthHash);
+    }
   }
   queryParams.set("sessionId", sessionId);
 
@@ -577,6 +597,18 @@ async function connect(options = {}) {
       payload.message.text = await decryptText(payload.message.text);
     }
 
+    if (payload.type === "authRequired") {
+      setConnection("Password required", "offline");
+      showToast("🔐 " + (payload.message || "Password required to enter this room."));
+      if (messageInput) messageInput.disabled = true;
+      if (shareButton) shareButton.disabled = true;
+      if (clearRoomButton) clearRoomButton.style.display = "none";
+      if (typeof window.retryPassword === "function") {
+        window.retryPassword();
+      }
+      return;
+    }
+
     if (payload.type === "hello") {
       setConnection("Connected live", "online");
       clientId = payload.clientId;
@@ -591,10 +623,10 @@ async function connect(options = {}) {
       if (clearRoomButton) {
         if (currentRoomId === "public") {
           clearRoomButton.style.display = 'none';
-        } else if (payload.hasAdmin && !isAdmin) {
-          clearRoomButton.style.display = 'none';
-        } else {
+        } else if (isAdmin) {
           clearRoomButton.style.display = '';
+        } else {
+          clearRoomButton.style.display = 'none';
         }
       }
 
@@ -1476,6 +1508,14 @@ function renderMessages() {
     if (attachmentData && attachmentData.type && attachmentData.type.startsWith("audio/")) {
       text.innerHTML = '';
     } else if (messageContent === "🔒 Encrypted Message" && currentRoomId !== "public") {
+      if (editButton) editButton.style.display = "none";
+      if (deleteButton) deleteButton.style.display = "none";
+      if (menuBtn) menuBtn.style.display = "none";
+      if (quickCopyBtn) quickCopyBtn.classList.add("hidden");
+      if (quickDownloadBtn) quickDownloadBtn.classList.add("hidden");
+      if (replyButton) replyButton.style.display = "none";
+      if (pinButton) pinButton.style.display = "none";
+
       text.innerHTML = `
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 16px; background: var(--surface-soft); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; margin-top: 6px;">
           
@@ -2441,6 +2481,7 @@ newRoomButton.addEventListener("click", () => {
     if (password) {
       // Derive the AES key from the password
       roomCryptoKey = await deriveKeyFromPassword(password, roomId);
+      currentRoomAuthHash = await computeAuthHash(password, roomId);
       // Store pwd=1 in the hash so visitors know to prompt for password
       // We do NOT embed the raw key in the URL — only the password flag
       const hashParams = new URLSearchParams();
@@ -2456,6 +2497,7 @@ newRoomButton.addEventListener("click", () => {
       const exported = await window.crypto.subtle.exportKey("raw", key);
       const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(exported)));
       roomCryptoKey = key;
+      currentRoomAuthHash = await computeAuthHash(keyBase64, roomId);
       const hashParams = new URLSearchParams();
       hashParams.set('key', keyBase64);
       history.replaceState({}, "", window.location.pathname + `?room=${encodeURIComponent(roomId)}` + '#' + hashParams.toString());
