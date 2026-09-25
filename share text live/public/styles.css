@@ -1154,8 +1154,9 @@ textarea {
   border-radius: 0 8px 8px 0;
 }
 
-.message-text code {
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+/* Inline code inside messages */
+.message-text :not(pre) > code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   background: var(--surface-hover);
   padding: 2px 6px;
   border-radius: 4px;
@@ -1163,20 +1164,78 @@ textarea {
   color: #e879f9;
 }
 
-.message-text pre {
-  background: var(--canvas);
-  padding: 12px;
+/* Code block wrapper and header */
+.code-block-wrapper {
+  margin: 10px 0;
   border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #181b20;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: #131519;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8b949e;
+  user-select: none;
+}
+
+.code-lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #a5b4fc;
+}
+
+.code-copy-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: #c9d1d9;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.code-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.message-text pre {
+  background: #181b20 !important;
+  padding: 12px 14px;
+  border-radius: 0;
   overflow-x: auto;
-  margin-bottom: 0.8em;
-  border: 1px solid var(--line);
+  margin: 0 !important;
+  border: none !important;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  tab-size: 4;
 }
 
 .message-text pre code {
-  background: transparent;
-  padding: 0;
-  color: var(--ink);
-  font-size: 0.9em;
+  background: transparent !important;
+  padding: 0 !important;
+  color: #abb2bf !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: inherit;
+  display: block;
 }
 
 /* Pinned and Reply UI Styles */
@@ -1541,23 +1600,9 @@ textarea {
   background: rgba(0, 0, 0, 0.8);
 }
 
-/* Markdown specific styling */
-.message-text pre {
-  background: #1e1e24; /* Fallback for highlight.js */
-  padding: 12px;
-  border-radius: 8px;
-  overflow-x: auto;
-  margin: 8px 0;
-  font-size: 0.9rem;
-  border: 1px solid var(--line);
-}
-
-.message-text code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
 /* Inline code */
-.message-text p code {
+.message-text p code,
+.message-text li code {
   background: var(--surface-hover);
   padding: 2px 4px;
   border-radius: 4px;
@@ -2196,15 +2241,17 @@ textarea {
   background: #e5e7eb;
 }
 
-/* Light mode: Code blocks in messages */
-[data-theme="light"] .message-text pre {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
-}
-
-[data-theme="light"] .message-text code {
+/* Light mode: Inline code in messages */
+[data-theme="light"] .message-text :not(pre) > code {
   background: #f3f4f6;
   color: #e11d48;
+}
+
+/* Light mode: Code blocks maintain crisp dark editor look for high-contrast syntax highlighting */
+[data-theme="light"] .code-block-wrapper {
+  background: #181b20;
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 /* Light mode: File attachment cards */

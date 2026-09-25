@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const zlib = require("zlib");
 
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
@@ -95,6 +96,42 @@ const mimeTypes = {
   ".webp": "image/webp",
   ".gif": "image/gif"
 };
+
+// --- Bandwidth Optimization: Gzip Compression & Caching ---
+// In-memory cache for compressed static files (compress once, serve many times)
+const gzipCache = new Map();
+
+// File types that benefit from Gzip compression (text-based formats)
+// Images (.png, .jpg, .webp, .gif, .ico) are already compressed and should NOT be gzipped
+const COMPRESSIBLE_EXTENSIONS = new Set(['.html', '.css', '.js', '.json', '.txt', '.xml', '.svg']);
+
+// Files that should NEVER be browser-cached (always serve fresh)
+const NO_CACHE_EXTENSIONS = new Set(['.html']);
+const NO_CACHE_FILES = new Set(['sw.js', 'robots.txt', 'sitemap.xml']);
+
+// Returns appropriate Cache-Control header based on file type
+function getCacheHeaders(filePath) {
+  const ext = path.extname(filePath);
+  const basename = path.basename(filePath);
+
+  // HTML, service worker, sitemap, robots — never cache (user always gets latest)
+  if (NO_CACHE_EXTENSIONS.has(ext) || NO_CACHE_FILES.has(basename)) {
+    return { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0' };
+  }
+
+  // CSS & JS — 7-day cache with background revalidation (updates arrive on next visit)
+  if (ext === '.css' || ext === '.js' || ext === '.json') {
+    return { 'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400' };
+  }
+
+  // Images & fonts — 30-day cache (these rarely change)
+  if (['.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.svg'].includes(ext)) {
+    return { 'Cache-Control': 'public, max-age=2592000, immutable' };
+  }
+
+  // Everything else — no special caching
+  return {};
+}
 
 function sendJson(socket, payload) {
   if (socket.destroyed) return;
@@ -1289,14 +1326,57 @@ function serveFile(req, res) {
       return;
     }
 
-    const contentType = mimeTypes[path.extname(filePath)] || "application/octet-stream";
-    
-    // Ensure service worker, HTML, sitemap, and robots are never HTTP-cached
-    const cacheHeaders = (filePath.endsWith('sw.js') || filePath.endsWith('.html') || filePath.endsWith('.xml') || filePath.endsWith('.txt')) 
-      ? { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0' }
-      : {};
+    const ext = path.extname(filePath);
+    const contentType = mimeTypes[ext] || "application/octet-stream";
+    const cacheHeaders = getCacheHeaders(filePath);
 
-    res.writeHead(200, { 'Content-Type': contentType, ...SECURITY_HEADERS, ...cacheHeaders });
+    // Check if client accepts Gzip and file type is compressible
+    const acceptEncoding = req.headers['accept-encoding'] || '';
+    const clientAcceptsGzip = acceptEncoding.includes('gzip');
+    const isCompressible = COMPRESSIBLE_EXTENSIONS.has(ext);
+
+    if (clientAcceptsGzip && isCompressible) {
+      // Check in-memory cache first (compress once, serve many times)
+      const cached = gzipCache.get(filePath);
+      if (cached && cached.originalSize === content.length) {
+        // Serve from cache — zero CPU cost
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Content-Encoding': 'gzip',
+          'Vary': 'Accept-Encoding',
+          ...SECURITY_HEADERS,
+          ...cacheHeaders
+        });
+        res.end(cached.data);
+        return;
+      }
+
+      // Compress and store in cache for future requests
+      zlib.gzip(content, { level: 6 }, (gzipErr, compressed) => {
+        if (gzipErr) {
+          // Gzip failed — fall back to uncompressed (never break the response)
+          res.writeHead(200, { 'Content-Type': contentType, 'Vary': 'Accept-Encoding', ...SECURITY_HEADERS, ...cacheHeaders });
+          res.end(content);
+          return;
+        }
+
+        // Store in cache for instant serving on next request
+        gzipCache.set(filePath, { data: compressed, originalSize: content.length });
+
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Content-Encoding': 'gzip',
+          'Vary': 'Accept-Encoding',
+          ...SECURITY_HEADERS,
+          ...cacheHeaders
+        });
+        res.end(compressed);
+      });
+      return;
+    }
+
+    // Client doesn't accept Gzip OR file is binary (images) — serve uncompressed
+    res.writeHead(200, { 'Content-Type': contentType, 'Vary': 'Accept-Encoding', ...SECURITY_HEADERS, ...cacheHeaders });
     res.end(content);
   });
 }

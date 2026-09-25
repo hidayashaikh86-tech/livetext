@@ -100,6 +100,95 @@ if (lightbox) {
   });
 }
 
+function detectCodeLanguage(text) {
+  if (!text || typeof text !== 'string') return null;
+
+  // 1. JavaScript / TypeScript (check before Python to disambiguate ES6 imports)
+  const jsPatterns = [
+    /(?:^|\n)\s*(?:const|let|var)\s+[a-zA-Z_$]\w*\s*=/,
+    /(?:^|\n)\s*function(?:\s+[a-zA-Z_$]\w*)?\s*\(/,
+    /(?:^|\n)\s*import\s+.*(?:from\s+['"]|['"];?$)/,
+    /(?:^|\n)\s*export\s+(?:default|const|let|var|function|class|\{)/,
+    /(?:^|\n)\s*console\.(?:log|error|warn|info|debug)\s*\(/,
+    /(?:^|\n)\s*(?:interface|type)\s+[A-Z]\w*\s*(?:=|\{)/,
+    /(?:^|\n)\s*=>\s*\{?/
+  ];
+  if (jsPatterns.some(p => p.test(text))) return 'javascript';
+
+  // 2. Python patterns
+  const pythonPatterns = [
+    /(?:^|\n)\s*(?:import\s+[a-zA-Z0-9_.]+(?:\s*,\s*[a-zA-Z0-9_.]+)*(?:\s+as\s+[a-zA-Z0-9_]+)?|from\s+[a-zA-Z0-9_.]+\s+import)/,
+    /(?:^|\n)\s*(?:async\s+)?def\s+[a-zA-Z_]\w*\s*\([^)]*\)\s*(?:->\s*[^:]+)?\s*:/,
+    /(?:^|\n)\s*class\s+[a-zA-Z_]\w*(?:\([^)]*\))?\s*:/,
+    /(?:^|\n)\s*(?:elif|while|for)\s+.*:\s*$/m,
+    /(?:^|\n)\s*try\s*:\s*$/m,
+    /(?:^|\n)\s*except(?:\s+[\w\s,]+)?\s*:/,
+    /(?:^|\n)\s*finally\s*:\s*$/m,
+    /(?:^|\n)\s*if\s+__name__\s*==\s*['"]__main__['"]\s*:/,
+    /(?:^|\n)\s*print\s*\(/,
+    /(?:^|\n)\s*@\w+(?:\(.*\))?\s*$/m,
+    /(?:^|\n)\s*with\s+.*(?:\s+as\s+\w+)?\s*:\s*$/m,
+    /(?:^|\n)\s*lambda\s+[^:]+:/
+  ];
+  if (pythonPatterns.some(p => p.test(text))) return 'python';
+
+  // 3. HTML / XML
+  if (/^\s*<!DOCTYPE\s+html>/i.test(text) || /^\s*<(?:html|head|body|div|span|p|a|ul|ol|li|table|form|button|input|script|style)[\s>]/i.test(text)) {
+    return 'html';
+  }
+
+  // 4. PHP
+  if (/^\s*<\?php/i.test(text)) return 'php';
+
+  // 5. C / C++
+  if (/(?:^|\n)\s*#include\s+[<"][a-zA-Z0-9_./]+[>"]/.test(text) || /(?:^|\n)\s*(?:int|void)\s+main\s*\([^)]*\)\s*\{/.test(text)) {
+    return 'cpp';
+  }
+
+  // 6. SQL
+  if (/(?:^|\n)\s*(?:SELECT\s+[\s\S]+?\s+FROM|INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|CREATE\s+TABLE|ALTER\s+TABLE|DROP\s+TABLE)\b/i.test(text)) {
+    return 'sql';
+  }
+
+  // 7. Bash / Shell
+  const bashPatterns = [
+    /^\s*#!\/(?:usr\/)?bin\/(?:env\s+)?(?:bash|sh|zsh)/,
+    /(?:^|\n)\s*(?:npm\s+(?:run|install|i|test|build)|yarn\s+|pnpm\s+|pip\s+install|cargo\s+|git\s+[a-z]+|docker\s+[a-z]+|kubectl\s+|curl\s+-|wget\s+)/,
+    /(?:^|\n)\s*(?:echo\s+["']|export\s+[A-Z_]+=)/
+  ];
+  if (bashPatterns.some(p => p.test(text))) return 'bash';
+
+  // 8. JSON
+  if (/^\s*[\{\[][\s\S]*["'][a-zA-Z0-9_-]+["']\s*:\s*[\s\S]*[\}\]]\s*$/.test(text.trim())) {
+    return 'json';
+  }
+
+  // 9. Go
+  if (/(?:^|\n)\s*package\s+[a-z0-9_]+/.test(text) || /(?:^|\n)\s*func\s+(?:\([^)]+\)\s+)?[a-zA-Z_]\w*\s*\(/.test(text)) {
+    return 'go';
+  }
+
+  // 10. Rust
+  if (/(?:^|\n)\s*(?:fn\s+main|pub\s+fn|let\s+mut|impl\b|use\s+std::)/.test(text)) {
+    return 'rust';
+  }
+
+  // 11. CSS
+  if (/(?:^|\n)\s*(?:[.#]?[a-zA-Z0-9_:-]+|\*)\s*\{\s*[\n\r]\s*[a-zA-Z-]+:\s*[^;]+;/.test(text)) {
+    return 'css';
+  }
+
+  // Fallback: character density heuristic for other languages
+  if (text.split('\n').length >= 2) {
+    const specialChars = (text.match(/[{}[\]();=<>]/g) || []).length;
+    if (specialChars / text.length > 0.05) {
+      return ''; // generic code block (will use highlightAuto)
+    }
+  }
+
+  return null;
+}
+
 let markedRendererConfigured = false;
 
 function parseMarkdown(text) {
@@ -115,25 +204,62 @@ function parseMarkdown(text) {
       const htmlStr = typeof token === 'string' ? token : (token.text || token.raw || "");
       return String(htmlStr).replace(/</g, '&lt;').replace(/>/g, '&gt;');
     };
-    const options = { renderer: renderer };
-    if (window.hljs) {
-      renderer.code = function(codeOrToken, lang) {
-        const code = typeof codeOrToken === 'string' ? codeOrToken : codeOrToken.text;
-        const language = typeof codeOrToken === 'string' ? (lang || '') : (codeOrToken.lang || '');
-        let highlighted;
+
+    renderer.code = function(codeOrToken, lang) {
+      const code = typeof codeOrToken === 'string' ? codeOrToken : (codeOrToken.text || '');
+      const rawLang = typeof codeOrToken === 'string' ? (lang || '') : (codeOrToken.lang || '');
+      const cleanLang = rawLang.trim().toLowerCase().split(/\s+/)[0];
+
+      const langAliases = {
+        py: 'python',
+        python3: 'python',
+        py3: 'python',
+        js: 'javascript',
+        ts: 'typescript',
+        sh: 'bash',
+        shell: 'bash',
+        zsh: 'bash',
+        golang: 'go',
+        yml: 'yaml',
+        rb: 'ruby',
+        cs: 'csharp',
+        'c++': 'cpp',
+        h: 'c',
+        hpp: 'cpp',
+        html: 'xml',
+        htm: 'xml',
+        md: 'markdown'
+      };
+      const language = langAliases[cleanLang] || cleanLang;
+
+      let highlighted = '';
+      let finalLang = language;
+
+      if (window.hljs) {
         try {
           if (language && hljs.getLanguage(language)) {
             highlighted = hljs.highlight(code, { language: language }).value;
           } else {
-            highlighted = hljs.highlightAuto(code).value;
+            const auto = hljs.highlightAuto(code);
+            highlighted = auto.value;
+            if (auto.language) {
+              finalLang = auto.language;
+            }
           }
-        } catch(e) {
+        } catch (e) {
           highlighted = String(code).replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
-        return `<pre><code class="hljs ${language ? 'language-' + language : ''}">${highlighted}</code></pre>`;
-      };
-    }
-    marked.setOptions(options);
+      } else {
+        highlighted = String(code).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      const displayLang = finalLang ? (finalLang === 'xml' ? 'HTML' : finalLang.toUpperCase()) : 'CODE';
+      const finalClass = finalLang ? `language-${finalLang}` : '';
+
+      return `<div class="code-block-wrapper"><div class="code-header"><span class="code-lang">${displayLang}</span><button type="button" class="code-copy-btn" title="Copy code" aria-label="Copy code">Copy</button></div><pre><code class="hljs ${finalClass}">${highlighted}</code></pre></div>`;
+    };
+
+    marked.setOptions({ renderer: renderer });
     markedRendererConfigured = true;
   }
   
@@ -141,35 +267,14 @@ function parseMarkdown(text) {
   
   // Auto-detect Code Magic
   if (processText && !processText.includes('```')) {
-    const codePatterns = [
-      /^\s*<!DOCTYPE html>/i,
-      /^\s*<html/i,
-      /^\s*<\?php/i,
-      /^\s*import\s+.*from/m,
-      /^\s*function\s+\w+\s*\(/m,
-      /^\s*const\s+\w+\s*=/m,
-      /^\s*let\s+\w+\s*=/m,
-      /^\s*class\s+\w+/m,
-      /^\s*def\s+\w+\s*\(/m,
-      /^\s*#include\s+</m,
-      /^\s*SELECT\s+.*\s+FROM/im
-    ];
-    let isCode = codePatterns.some(p => p.test(processText));
-    
-    if (!isCode && processText.split('\n').length > 2) {
-      const specialChars = (processText.match(/[{}[\]();=<>]/g) || []).length;
-      if (specialChars / processText.length > 0.06) {
-        isCode = true;
-      }
-    }
-    
-    if (isCode) {
-      processText = '```\n' + processText + '\n```';
+    const detectedLang = detectCodeLanguage(processText);
+    if (detectedLang !== null) {
+      processText = '```' + detectedLang + '\n' + processText + '\n```';
     }
   }
 
   const rawHtml = marked.parse(processText, { breaks: true, gfm: true });
-  return DOMPurify.sanitize(rawHtml);
+  return DOMPurify.sanitize(rawHtml, { ADD_TAGS: ['button'], ADD_ATTR: ['type', 'class', 'title', 'aria-label'] });
 }
 
 let socket;
@@ -2312,6 +2417,17 @@ if (closePinnedBtn) {
 document.addEventListener('click', () => {
   if (boardMenu) boardMenu.classList.add('hidden');
   document.querySelectorAll('.msg-dropdown').forEach(d => d.classList.add('hidden'));
+});
+
+// Delegate click for code block copy buttons
+document.addEventListener('click', (e) => {
+  const copyBtn = e.target.closest('.code-copy-btn');
+  if (!copyBtn) return;
+  const wrapper = copyBtn.closest('.code-block-wrapper');
+  const codeEl = wrapper ? wrapper.querySelector('code') : null;
+  if (codeEl) {
+    copyText(codeEl.textContent, copyBtn);
+  }
 });
 
 saveNameButton.addEventListener("click", () => {
