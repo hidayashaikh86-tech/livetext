@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Stop pasting API keys in Slack and email. Learn how to share API keys securely with your team using encrypted, self-destructing links that vanish after reading." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://shareli.online/blog/share-api-keys-securely.html" />
+  <meta property="og:title" content="How to Share API Keys and Secrets Securely With Your Team" />
+  <meta property="og:description" content="Stop pasting API keys in Slack and email. Learn how to share API keys securely with your team using encrypted, self-destructing links that vanish after reading." />
+  <meta property="og:url" content="https://shareli.online/blog/share-api-keys-securely.html" />
+  <meta property="og:type" content="article" />
+  <title>How to Share API Keys and Secrets Securely With Your Team | Shareli</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="/favicon.ico" sizes="48x48" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/favicon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .page-wrap { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+    .page-nav a { color: var(--muted); text-decoration: none; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 48px; }
+    .page-nav a:hover { color: var(--ink); }
+    .post-meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 16px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .post-tag { background: var(--accent-soft); color: var(--accent-strong); border-radius: 6px; padding: 2px 8px; font-weight: 500; }
+    h1 { font-size: clamp(1.7rem, 5vw, 2.3rem); font-weight: 800; line-height: 1.2; margin-bottom: 20px; color: var(--ink); }
+    .lead { font-size: 1.1rem; line-height: 1.75; color: var(--muted); margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--line); }
+    h2 { font-size: 1.2rem; font-weight: 700; color: var(--ink); margin: 36px 0 12px; }
+    p { line-height: 1.8; color: var(--muted); margin-bottom: 16px; font-size: 0.97rem; }
+    ol, ul { padding-left: 22px; margin-bottom: 16px; }
+    li { line-height: 1.75; color: var(--muted); margin-bottom: 8px; font-size: 0.97rem; }
+    strong { color: var(--ink); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .cta-box { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 14px; padding: 28px; margin: 40px 0; text-align: center; }
+    .cta-box p { color: var(--ink); font-weight: 600; margin-bottom: 12px; }
+    .cta-box a { background: var(--accent); color: #fff; padding: 10px 24px; border-radius: 8px; font-weight: 600; display: inline-block; }
+    .page-footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; }
+    .page-footer a { color: var(--muted); text-decoration: none; }
+    .page-footer a:hover { color: var(--ink); }
+  </style>
+  <meta property="og:image" content="https://shareli.online/logo.jpg" />
+  <meta name="twitter:image" content="https://shareli.online/logo.jpg" />
+</head>
+<body>
+  <main class="page-wrap">
+    <nav class="page-nav">
+      <a href="/blog.html">← Shareli Blog</a>
+    </nav>
+
+    <div class="post-meta">
+      <span>September 2026</span>
+      <span class="post-tag">Developer</span>
+      <span class="post-tag">Security</span>
+    </div>
+
+    <h1>How to Share API Keys and Secrets Securely With Your Team</h1>
+
+    <p class="lead">
+      Every development team does it. A new engineer joins, and someone pastes a database password into Slack. A contractor needs access, so you email an API key. A deploy breaks, and someone drops the production .env file into a Discord channel. It takes five seconds, it feels harmless — and it creates a permanent, searchable record of your most sensitive credentials. Here's how to share secrets with your team without leaving a trail.
+    </p>
+
+    <h2>The Real Problem With Slack, Email, and Discord</h2>
+
+    <p>
+      When you paste an API key into a Slack message, that key doesn't disappear after your colleague reads it. It lives in Slack's message history indefinitely. It's indexed by Slack's search. Anyone with access to the channel — including people who join months later — can find it by searching for terms like "API_KEY" or "password."
+    </p>
+
+    <p>
+      The same goes for email. Messages are forwarded, backed up, synced across devices, and stored on mail servers you don't control. Even "deleted" emails often persist in backups and compliance archives. Discord is no better — message history is permanent and searchable by every member of a server.
+    </p>
+
+    <p>
+      This isn't a theoretical risk. Some of the most damaging security breaches in recent years started with credentials found in old messages. In 2023, several high-profile incidents traced back to API keys accidentally committed to Git repos or left in chat histories. If an attacker gains access to a single team member's Slack or email account, they can search the entire history for keywords like <strong>"secret," "token," "password,"</strong> or <strong>"AWS_ACCESS_KEY"</strong> and instantly find valid credentials.
+    </p>
+
+    <h2>Why Traditional Secret Managers Aren't Always Enough</h2>
+
+    <p>
+      The industry-standard answer is to use a dedicated secret manager — tools like HashiCorp Vault, AWS Secrets Manager, or 1Password for Teams. These are excellent solutions for <strong>storing and rotating</strong> secrets in production infrastructure.
+    </p>
+
+    <p>
+      But they don't solve every scenario. Secret managers are designed for machine-to-machine access, not quick human-to-human sharing. Consider these everyday situations:
+    </p>
+
+    <ul>
+      <li><strong>Onboarding a new developer</strong> who needs a dozen environment variables to set up their local machine</li>
+      <li><strong>Sharing a third-party API key</strong> with a freelancer who needs it for a single integration</li>
+      <li><strong>Sending database credentials</strong> to a teammate debugging a production issue at midnight</li>
+      <li><strong>Distributing a .env file</strong> to the team when you've rotated keys</li>
+    </ul>
+
+    <p>
+      In each case, you need to send a credential to a specific person, right now. Setting up Vault access for a contractor who's working with you for two days is overkill. What you need is a way to send an API key safely — one that's encrypted, ephemeral, and leaves no trace.
+    </p>
+
+    <h2>A Better Way to Share Credentials Securely</h2>
+
+    <p>
+      The principle is simple: <strong>secrets should be encrypted in transit and should not persist after they've been read.</strong> That's it. If the credential can only be viewed once, can't be recovered from any server, and self-destructs after a short window, the attack surface drops to nearly zero.
+    </p>
+
+    <p>
+      This is exactly what Shareli does. When you paste text into Shareli, it's encrypted entirely in your browser using AES-256 encryption before anything is sent to the server. The encryption key is embedded in the URL fragment (the part after the <strong>#</strong>), which browsers never send to servers. The server stores only encrypted bytes it cannot read.
+    </p>
+
+    <p>
+      You then share the link with your teammate. They open it, the browser decrypts the content locally, and the message is destroyed. The server deletes the encrypted payload. No one — not Shareli, not an attacker who compromises the server, not someone who gains access to your teammate's Slack later — can recover the secret.
+    </p>
+
+    <h2>Step-by-Step: Sharing an API Key or .env File</h2>
+
+    <p>
+      Here's the exact workflow to share API keys securely using Shareli:
+    </p>
+
+    <ol>
+      <li><strong>Open Shareli</strong> — go to <a href="/">shareli.online</a>. No account, no login, no setup.</li>
+      <li><strong>Paste your secret</strong> — whether it's a single API key, a full .env file, or a block of credentials. For files, you can drag and drop the file directly.</li>
+      <li><strong>Set a self-destruct timer</strong> — choose 30 seconds, 5 minutes, or whatever window makes sense. For a quick share with someone who's online right now, 30 seconds is ideal.</li>
+      <li><strong>Copy the generated link</strong> — Shareli gives you a URL. The encryption key is in the fragment, so the server never sees it.</li>
+      <li><strong>Send the link to your teammate</strong> — via Slack, email, or any channel. Even if the channel is compromised later, the link is dead. It can only be opened once, and the content self-destructs.</li>
+      <li><strong>Your teammate opens the link</strong> — the secret is decrypted in their browser, they copy it, and it's gone. No trace on any server.</li>
+    </ol>
+
+    <p>
+      The entire process takes about 15 seconds. No sign-ups, no configuration, no CLI tools to install.
+    </p>
+
+    <h2>When to Use Shareli vs. a Secret Manager</h2>
+
+    <p>
+      To be clear, Shareli doesn't replace your secret manager for production infrastructure. Use Vault or AWS Secrets Manager for automated secret rotation, service-to-service authentication, and centralized access control. These tools solve infrastructure-level secrets management.
+    </p>
+
+    <p>
+      Use Shareli for <strong>human-to-human credential sharing</strong> — the gap that secret managers don't address:
+    </p>
+
+    <ul>
+      <li><strong>One-time shares:</strong> Sending a key to one person who needs it right now</li>
+      <li><strong>Onboarding:</strong> Distributing initial credentials before someone has access to your secret manager</li>
+      <li><strong>Cross-organization sharing:</strong> Sending credentials to contractors, vendors, or partners who aren't in your infrastructure</li>
+      <li><strong>Emergency access:</strong> Sharing production credentials during an incident when normal channels are too slow</li>
+    </ul>
+
+    <h2>What Makes This Approach Secure</h2>
+
+    <p>
+      Several properties make encrypted, ephemeral sharing fundamentally different from pasting secrets in chat:
+    </p>
+
+    <ul>
+      <li><strong>End-to-end encryption:</strong> The server stores only ciphertext it cannot decrypt. Even a full server breach reveals nothing.</li>
+      <li><strong>Zero persistence:</strong> Content is deleted after it's read. There's no message history to search through.</li>
+      <li><strong>No accounts:</strong> No user database means no credentials to steal and no access to revoke.</li>
+      <li><strong>Link expiration:</strong> Even if the recipient doesn't open the link, it self-destructs after the timer expires. Stale links are dead links.</li>
+      <li><strong>Browser-only decryption:</strong> The decryption key never leaves the sender's and recipient's browsers. It's in the URL fragment, which is excluded from server logs, HTTP headers, and referrer data.</li>
+    </ul>
+
+    <h2>A Quick Security Checklist for Developers</h2>
+
+    <p>
+      Beyond how you share secrets, here are baseline practices every team should follow:
+    </p>
+
+    <ol>
+      <li><strong>Never commit secrets to Git.</strong> Use .gitignore for .env files and add pre-commit hooks to scan for accidental leaks.</li>
+      <li><strong>Rotate keys regularly.</strong> If a key has been shared via any channel — even a secure one — rotate it on a schedule.</li>
+      <li><strong>Use scoped, least-privilege keys.</strong> Don't share a root API key when a read-only key with limited scope will do.</li>
+      <li><strong>Audit access periodically.</strong> Remove API keys for people who no longer need them.</li>
+      <li><strong>Share secrets ephemerally.</strong> When you need to send credentials to a person, use an encrypted, self-destructing channel — not persistent chat.</li>
+    </ol>
+
+    <p>
+      The weakest link in most secret management strategies isn't the tools — it's the moment when a human needs to send a credential to another human. That's the moment that creates searchable, permanent records in Slack and email. Eliminating that moment of exposure is the simplest, highest-impact security improvement most teams can make.
+    </p>
+
+    <div class="cta-box">
+      <p>Share API keys and secrets without leaving a trace. Encrypted, self-destructing, zero setup.</p>
+      <a href="/">Open Shareli →</a>
+    </div>
+
+    <h2>Related Articles</h2>
+    <ul>
+      <li><a href="/blog/share-code-snippets-online.html">How to Share Code Snippets Online Instantly</a></li>
+      <li><a href="/blog/password-protected-chat-rooms.html">How to Create Password-Protected Chat Rooms</a></li>
+      <li><a href="/blog/self-destructing-messages-explained.html">What Are Self-Destructing Messages?</a></li>
+    </ul>
+
+    <footer class="page-footer">
+      <a href="/">Home</a>
+      <a href="/blog.html">Blog</a>
+      <a href="/about.html">About</a>
+      <a href="/faq.html">FAQ</a>
+      <a href="/privacy.html">Privacy</a>
+    </footer>
+  </main>
+</body>
+</html>

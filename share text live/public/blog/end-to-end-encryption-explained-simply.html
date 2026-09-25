@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="End-to-end encryption explained in plain English. Learn what E2EE is, how it differs from HTTPS, and how Shareli uses AES-GCM 256-bit encryption so the server never sees your data." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://shareli.online/blog/end-to-end-encryption-explained-simply.html" />
+  <meta property="og:title" content="End-to-End Encryption Explained Simply — What It Is and Why It Matters" />
+  <meta property="og:description" content="A beginner-friendly guide to end-to-end encryption. Learn how E2EE works, why it matters for privacy, and how Shareli encrypts everything in your browser before it ever reaches a server." />
+  <meta property="og:url" content="https://shareli.online/blog/end-to-end-encryption-explained-simply.html" />
+  <meta property="og:type" content="article" />
+  <title>End-to-End Encryption Explained Simply — What It Is and Why It Matters | Shareli</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="/favicon.ico" sizes="48x48" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/favicon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .page-wrap { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+    .page-nav a { color: var(--muted); text-decoration: none; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 48px; }
+    .page-nav a:hover { color: var(--ink); }
+    .post-meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 16px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .post-tag { background: var(--accent-soft); color: var(--accent-strong); border-radius: 6px; padding: 2px 8px; font-weight: 500; }
+    h1 { font-size: clamp(1.7rem, 5vw, 2.3rem); font-weight: 800; line-height: 1.2; margin-bottom: 20px; color: var(--ink); }
+    .lead { font-size: 1.1rem; line-height: 1.75; color: var(--muted); margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--line); }
+    h2 { font-size: 1.2rem; font-weight: 700; color: var(--ink); margin: 36px 0 12px; }
+    p { line-height: 1.8; color: var(--muted); margin-bottom: 16px; font-size: 0.97rem; }
+    ol, ul { padding-left: 22px; margin-bottom: 16px; }
+    li { line-height: 1.75; color: var(--muted); margin-bottom: 8px; font-size: 0.97rem; }
+    strong { color: var(--ink); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .cta-box { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 14px; padding: 28px; margin: 40px 0; text-align: center; }
+    .cta-box p { color: var(--ink); font-weight: 600; margin-bottom: 12px; }
+    .cta-box a { background: var(--accent); color: #fff; padding: 10px 24px; border-radius: 8px; font-weight: 600; display: inline-block; }
+    .page-footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; }
+    .page-footer a { color: var(--muted); text-decoration: none; }
+    .page-footer a:hover { color: var(--ink); }
+  </style>
+  <meta property="og:image" content="https://shareli.online/logo.jpg" />
+  <meta name="twitter:image" content="https://shareli.online/logo.jpg" />
+</head>
+<body>
+  <main class="page-wrap">
+    <nav class="page-nav">
+      <a href="/blog.html">← Shareli Blog</a>
+    </nav>
+
+    <div class="post-meta">
+      <span>September 2026</span>
+      <span class="post-tag">Privacy</span>
+      <span class="post-tag">Education</span>
+    </div>
+
+    <h1>End-to-End Encryption Explained Simply — What It Is and Why It Matters</h1>
+
+    <p class="lead">You've probably seen the phrase "end-to-end encrypted" on WhatsApp, iMessage, or Signal. But what does it actually mean? And how is it different from the padlock icon you see in your browser? This guide breaks down end-to-end encryption in plain language — no computer science degree required.</p>
+
+    <h2>What Is Encryption, Exactly?</h2>
+
+    <p>At its simplest, <strong>encryption</strong> is the process of scrambling information so that only someone with the right key can unscramble it. Think of it like putting a letter inside a locked box. Anyone can carry the box, but only the person with the key can open it and read what's inside.</p>
+
+    <p>When you visit a website over HTTPS (that padlock in your address bar), your connection to the server is encrypted. This is called <strong>transport-layer encryption</strong>, or TLS. It prevents anyone between you and the server — your Wi-Fi network, your internet provider, a hacker at the coffee shop — from reading your data while it's in transit.</p>
+
+    <p>But here's the important part: <strong>TLS only protects data in transit</strong>. Once your message arrives at the server, the server can read it. The company running the server can read it. A hacker who breaches the server can read it. A government with a subpoena can read it.</p>
+
+    <h2>So What Is End-to-End Encryption?</h2>
+
+    <p><strong>End-to-end encryption (E2EE)</strong> solves this problem by encrypting data before it ever leaves your device. The data stays encrypted on the server, and only the intended recipient can decrypt it. The server is just a courier — it carries the locked box but never has the key.</p>
+
+    <p>Here's the key distinction:</p>
+
+    <ul>
+      <li><strong>Regular encryption (TLS/HTTPS):</strong> Your data is encrypted between you and the server. The server decrypts it, processes it, and stores it in readable form. The server operator can access your data.</li>
+      <li><strong>End-to-end encryption (E2EE):</strong> Your data is encrypted on your device before being sent. The server stores encrypted data it cannot read. Only someone with the decryption key — the intended recipient — can access it.</li>
+    </ul>
+
+    <p>Think of it this way: regular encryption is like sending a postcard inside a sealed envelope to the post office. The post office opens the envelope, reads the postcard, files a copy, and then puts it in a new envelope to send it on. End-to-end encryption is like putting the postcard inside a locked box that only the recipient can open. The post office carries it, but never sees what's inside.</p>
+
+    <h2>Why Does E2EE Matter?</h2>
+
+    <p>If you're sharing anything private — passwords, medical information, business documents, personal notes, code snippets — you're trusting someone with that data. With regular server-side encryption, you're trusting that:</p>
+
+    <ol>
+      <li>The company won't misuse your data</li>
+      <li>The company won't get hacked</li>
+      <li>No employee will access your data</li>
+      <li>No government will compel the company to hand it over</li>
+    </ol>
+
+    <p>With end-to-end encryption, you don't have to trust any of those things. Even if every single one of those scenarios happens, <strong>your data remains unreadable</strong> because the server never had the key to begin with.</p>
+
+    <h2>The "WhatsApp Problem" — E2EE Isn't Always What It Seems</h2>
+
+    <p>WhatsApp famously uses end-to-end encryption for messages. But there's a significant catch: <strong>cloud backups</strong>. For years, WhatsApp messages backed up to Google Drive or iCloud were stored unencrypted. Even now, with encrypted backups available, the backup encryption key can be stored on WhatsApp's servers if you choose the option to recover it.</p>
+
+    <p>This means there's still a path for someone to access your messages — through the backup system, through key recovery, or through metadata (who you messaged, when, how often). The encryption is real, but the overall system has holes.</p>
+
+    <p>This isn't unique to WhatsApp. Many services advertise E2EE but hold recovery keys, store metadata, or offer admin access that undermines the "end-to-end" promise. True zero-knowledge encryption means <strong>the service provider has no way to access your data, period</strong> — no recovery keys, no backdoors, no exceptions.</p>
+
+    <h2>How Shareli Implements End-to-End Encryption</h2>
+
+    <p>Shareli takes a different approach. Here's exactly how it works, step by step:</p>
+
+    <ol>
+      <li><strong>You create a note, paste text, or upload a file.</strong> Everything happens in your browser — nothing has been sent to the server yet.</li>
+      <li><strong>Your browser generates a random encryption key</strong> and uses it to encrypt your content with <strong>AES-GCM 256-bit encryption</strong> — the same standard used by governments and military organizations worldwide.</li>
+      <li><strong>The encrypted data is sent to the server.</strong> The server stores it, but it looks like random noise. It cannot be read without the key.</li>
+      <li><strong>The key is placed in the URL fragment</strong> — the part after the <code>#</code> symbol. Here's the critical detail: URL fragments are never sent to the server. They exist only in your browser. This is part of the HTTP specification, not a Shareli design choice — <strong>it's how the web works</strong>.</li>
+      <li><strong>You share the link.</strong> The recipient opens it, their browser extracts the key from the URL fragment, downloads the encrypted data from the server, and decrypts it locally.</li>
+    </ol>
+
+    <p>The result: <strong>Shareli's server never sees the encryption key</strong>. Not during creation, not during sharing, not ever. There is no key recovery mechanism. There is no admin panel that can decrypt your data. There is no backdoor.</p>
+
+    <h2>What Happens If Shareli's Server Gets Hacked?</h2>
+
+    <p>This is the question that reveals the strength of true end-to-end encryption. If someone breaches Shareli's server, they get a database full of encrypted blobs — random-looking data with no keys to decrypt it. Without the key (which only exists in the shared URL), the data is computationally useless. Breaking AES-256 encryption by brute force would take longer than the age of the universe with current technology.</p>
+
+    <p>Compare this to a service that uses server-side encryption: if the server is breached, the attacker gets both the encrypted data <em>and</em> the keys to decrypt it. It's like stealing a safe along with the combination taped to the bottom.</p>
+
+    <h2>A Simple Way to Think About It</h2>
+
+    <p>Here's the simplest mental model for understanding how Shareli's encryption works:</p>
+
+    <ul>
+      <li><strong>Your content</strong> = a letter</li>
+      <li><strong>AES-GCM encryption</strong> = a locked box that's practically impossible to break open</li>
+      <li><strong>The URL fragment (after #)</strong> = the key to the box</li>
+      <li><strong>Shareli's server</strong> = a storage locker that holds the box but never touches the key</li>
+      <li><strong>Sharing the link</strong> = handing someone both the locker number and the key</li>
+    </ul>
+
+    <p>The server is just a shelf. The security is in the lock and the key — and the key never leaves your hands until you choose to share it.</p>
+
+    <h2>When Should You Use E2EE?</h2>
+
+    <p>End-to-end encryption is valuable whenever you're sharing something that you wouldn't want a stranger, a company, or a government to read. That includes:</p>
+
+    <ul>
+      <li>Passwords, API keys, and login credentials</li>
+      <li>Private notes or journal entries</li>
+      <li>Business-sensitive documents and contracts</li>
+      <li>Medical or legal information</li>
+      <li>Code snippets containing proprietary logic</li>
+      <li>Any text or file you'd rather keep between you and the recipient</li>
+    </ul>
+
+    <p>You don't need to be doing anything secret to value privacy. You lock your front door not because you're hiding something, but because it's your space. End-to-end encryption is the digital equivalent of that lock.</p>
+
+    <h2>The Bottom Line</h2>
+
+    <p>End-to-end encryption means your data is encrypted before it leaves your device and can only be decrypted by the intended recipient. No middleman — not the service provider, not a hacker, not a government — can read it. Shareli implements this using AES-GCM 256-bit encryption entirely in your browser, with the decryption key stored only in the URL fragment that never reaches the server. It's encryption done right: simple, transparent, and truly zero-knowledge.</p>
+
+    <div class="cta-box">
+      <p>Try truly private sharing — encrypted in your browser, invisible to our servers.</p>
+      <a href="/">Open Shareli →</a>
+    </div>
+
+    <h2>Related Articles</h2>
+    <ul>
+      <li><a href="/blog/self-destructing-messages-explained.html">What Are Self-Destructing Messages?</a></li>
+      <li><a href="/blog/password-protected-chat-rooms.html">How to Create Password-Protected Chat Rooms</a></li>
+      <li><a href="/blog/share-files-without-google-drive.html">How to Share Files Without Google Drive</a></li>
+    </ul>
+
+    <footer class="page-footer">
+      <a href="/">Home</a>
+      <a href="/blog.html">Blog</a>
+      <a href="/about.html">About</a>
+      <a href="/faq.html">FAQ</a>
+      <a href="/privacy.html">Privacy</a>
+    </footer>
+  </main>
+</body>
+</html>
